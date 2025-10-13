@@ -1395,12 +1395,12 @@ with col1:
     except (ValueError, AttributeError):
         current_account_index = 0
 
-    # Account dropdown
+    # Account dropdown - UNIQUE KEY
     selected_account = st.selectbox(
         "Select Account:",
         options=ACCOUNTS,
         index=current_account_index,
-        key="account_selector"
+        key="account_selector_main"  # Changed to unique key
     )
 
     # Auto-map logic with rerun
@@ -1420,7 +1420,7 @@ with col2:
         current_industry_index = 0
 
     # Dynamic key ensures dropdown refreshes when mapping changes
-    industry_key = f"industry_selector_{current_industry}"
+    industry_key = f"industry_selector_main_{current_industry}"  # Changed to unique key
 
     selected_industry = st.selectbox(
         "Industry:",
@@ -1789,40 +1789,6 @@ if st.session_state.current_page == "page1":
         </p>
     </div>
     """, unsafe_allow_html=True)
-
-    # ---- Account & Industry ----
-    st.markdown('<div class="section-title-box"><h3>Account & Industry</h3></div>', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # Account selectbox
-        selected_account = st.selectbox(
-            "Select Account:", 
-            ACCOUNTS, 
-            index=ACCOUNTS.index(st.session_state.account), 
-            key="account_selector"
-        )
-        
-        # Update session state and auto-map industry
-        if selected_account != st.session_state.account:
-            st.session_state.account = selected_account
-            # Auto-map industry based on account
-            mapped_industry = ACCOUNT_INDUSTRY_MAP.get(selected_account, "Select Industry")
-            st.session_state.industry = mapped_industry
-            st.rerun()
-
-    with col2:
-        # Industry selectbox - always use current session state value
-        selected_industry = st.selectbox(
-            "Industry:", 
-            INDUSTRIES, 
-            index=INDUSTRIES.index(st.session_state.industry), 
-            key="industry_selector"
-        )
-        
-        # Update session state if user manually changes industry
-        if selected_industry != st.session_state.industry:
-            st.session_state.industry = selected_industry
 
     # ---- Business Problem ----
     st.markdown('<div class="section-title-box"><h3>Business Problem Description</h3></div>', unsafe_allow_html=True)
@@ -2327,6 +2293,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
