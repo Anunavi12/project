@@ -1381,59 +1381,6 @@ print(f"Total Accounts: {len(ACCOUNTS)}")
 print(f"Total Industries: {len(INDUSTRIES)}")
 print(f"Industries: {INDUSTRIES}")
 
-# ================================
-# 💼 Account & Industry Selection UI
-# ================================
-st.markdown('<div class="section-title-box"><h3>Account & Industry Selection</h3></div>', unsafe_allow_html=True)
-col1, col2 = st.columns(2)
-
-with col1:
-    # Safely fetch current account
-    current_account = st.session_state.get('account', 'Select Account')
-    try:
-        current_account_index = ACCOUNTS.index(current_account)
-    except (ValueError, AttributeError):
-        current_account_index = 0
-
-    # Account dropdown - UNIQUE KEY
-    selected_account = st.selectbox(
-        "Select Account:",
-        options=ACCOUNTS,
-        index=current_account_index,
-        key="account_selector_main"  # Changed to unique key
-    )
-
-    # Auto-map logic with rerun
-    if selected_account != st.session_state.get('account'):
-        st.session_state.account = selected_account
-        if selected_account in ACCOUNT_INDUSTRY_MAP:
-            st.session_state.industry = ACCOUNT_INDUSTRY_MAP[selected_account]
-            st.session_state.industry_updated = True
-        st.rerun()
-
-with col2:
-    # Safely fetch current industry
-    current_industry = st.session_state.get('industry', 'Select Industry')
-    try:
-        current_industry_index = INDUSTRIES.index(current_industry)
-    except (ValueError, AttributeError):
-        current_industry_index = 0
-
-    # Dynamic key ensures dropdown refreshes when mapping changes
-    industry_key = f"industry_selector_main_{current_industry}"  # Changed to unique key
-
-    selected_industry = st.selectbox(
-        "Industry:",
-        options=INDUSTRIES,
-        index=current_industry_index,
-        key=industry_key,
-        disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
-    )
-
-    if selected_industry != st.session_state.get('industry'):
-        st.session_state.industry = selected_industry
-        st.rerun()
-
 
 # === API CONFIGURATION ===
 API_CONFIGS = [
@@ -1790,6 +1737,59 @@ if st.session_state.current_page == "page1":
     </div>
     """, unsafe_allow_html=True)
 
+    # ================================
+    # 💼 Account & Industry Selection UI - MOVED TO HERE (AFTER TITLE)
+    # ================================
+    st.markdown('<div class="section-title-box"><h3>Account & Industry Selection</h3></div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Safely fetch current account
+        current_account = st.session_state.get('account', 'Select Account')
+        try:
+            current_account_index = ACCOUNTS.index(current_account)
+        except (ValueError, AttributeError):
+            current_account_index = 0
+
+        # Account dropdown - UNIQUE KEY
+        selected_account = st.selectbox(
+            "Select Account:",
+            options=ACCOUNTS,
+            index=current_account_index,
+            key="account_selector_main"  # Changed to unique key
+        )
+
+        # Auto-map logic with rerun
+        if selected_account != st.session_state.get('account'):
+            st.session_state.account = selected_account
+            if selected_account in ACCOUNT_INDUSTRY_MAP:
+                st.session_state.industry = ACCOUNT_INDUSTRY_MAP[selected_account]
+                st.session_state.industry_updated = True
+            st.rerun()
+
+    with col2:
+        # Safely fetch current industry
+        current_industry = st.session_state.get('industry', 'Select Industry')
+        try:
+            current_industry_index = INDUSTRIES.index(current_industry)
+        except (ValueError, AttributeError):
+            current_industry_index = 0
+
+        # Dynamic key ensures dropdown refreshes when mapping changes
+        industry_key = f"industry_selector_main_{current_industry}"  # Changed to unique key
+
+        selected_industry = st.selectbox(
+            "Industry:",
+            options=INDUSTRIES,
+            index=current_industry_index,
+            key=industry_key,
+            disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
+        )
+
+        if selected_industry != st.session_state.get('industry'):
+            st.session_state.industry = selected_industry
+            st.rerun()
+
     # ---- Business Problem ----
     st.markdown('<div class="section-title-box"><h3>Business Problem Description</h3></div>', unsafe_allow_html=True)
     st.session_state.problem_text = st.text_area(
@@ -1838,7 +1838,6 @@ if st.session_state.current_page == "page1":
         if warning_messages:
             for msg in warning_messages:
                 st.warning(msg)
-
 # ---- Buttons ----
 analyze_btn = False  # ✅ Predefine to silence Pylance warning safely
 
@@ -2293,6 +2292,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
