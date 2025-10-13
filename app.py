@@ -1729,25 +1729,46 @@ if st.session_state.current_page == "page1":
     col1, col2 = st.columns(2)
 
     with col1:
+        # Get the current account value
         current_account = st.session_state.get("account", "Select Account")
         try:
             acc_index = ACCOUNTS.index(current_account)
         except ValueError:
             acc_index = 0
 
-        selected_account = st.selectbox("Select Account:", ACCOUNTS, index=acc_index, key="account_selector")
+        # Account selectbox with onChange handler
+        selected_account = st.selectbox(
+            "Select Account:", 
+            ACCOUNTS, 
+            index=acc_index, 
+            key="account_selector"
+        )
+        
+        # Update industry when account changes
         if selected_account != st.session_state.account:
             st.session_state.account = selected_account
-            st.session_state.industry = ACCOUNT_INDUSTRY_MAP.get(selected_account, "Select Industry")
+            # Auto-map industry based on account
+            mapped_industry = ACCOUNT_INDUSTRY_MAP.get(selected_account, "Select Industry")
+            st.session_state.industry = mapped_industry
             st.rerun()
 
     with col2:
+        # Always use the session state industry value
         current_industry = st.session_state.get("industry", "Select Industry")
         try:
             ind_index = INDUSTRIES.index(current_industry)
         except ValueError:
             ind_index = 0
-        selected_industry = st.selectbox("Industry:", INDUSTRIES, index=ind_index, key="industry_selector")
+            
+        # Industry selectbox
+        selected_industry = st.selectbox(
+            "Industry:", 
+            INDUSTRIES, 
+            index=ind_index, 
+            key="industry_selector"
+        )
+        
+        # Only update if user manually changes industry
         if selected_industry != st.session_state.industry:
             st.session_state.industry = selected_industry
             st.rerun()
