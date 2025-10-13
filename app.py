@@ -1968,76 +1968,6 @@ if st.session_state.current_page == "page1":
             st.success("✅ Vocabulary extraction complete!")
             st.rerun()
 
-# ---- Show Vocabulary Directly After Analysis ----
-if st.session_state.current_page == "page1" and st.session_state.analysis_complete and st.session_state.show_vocabulary:
-    vocab_text = st.session_state.outputs.get("vocabulary", "")
-    
-    # ✅ Step 1: Get the pre-formatted HTML from your function
-    formatted_vocab = format_vocabulary_with_bold(vocab_text)
-
-    # ✅ Step 2: Clean HTML entities (important!)
-    formatted_vocab = html.unescape(formatted_vocab)
-    formatted_vocab = formatted_vocab.replace("&lt;", "<").replace("&gt;", ">")
-
-    # ✅ Step 3: Dynamically get account & industry for substitutions
-    account_name = st.session_state.get("analysis_account", "").strip()
-    industry_name = st.session_state.get("analysis_industry", "").strip()
-
-    # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
-    if account_name:
-        # Use a more careful replacement that preserves HTML tags
-        formatted_vocab = re.sub(
-            r'\bthe company\b', 
-            account_name, 
-            formatted_vocab, 
-            flags=re.IGNORECASE
-        )
-    if industry_name:
-        formatted_vocab = re.sub(
-            r'\bthe industry\b', 
-            industry_name, 
-            formatted_vocab, 
-            flags=re.IGNORECASE
-        )
-
-    # ✅ Step 5: Fallback display names for header
-    display_account = account_name if account_name else "the company"
-    display_industry = industry_name if industry_name else "the industry"
-
-    # ---- Section Title & Subheading ----
-    st.markdown(f"""
-        <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <h3 style="
-                    margin-bottom:8px;
-                    color:white;
-                    font-weight:800;
-                    font-size:1.4rem;
-                    line-height:1.2;
-                ">
-                    Vocabulary
-                </h3>
-                <p style="
-                    font-size:0.95rem; 
-                    color:white; 
-                    margin:0;
-                    line-height:1.5;
-                    text-align:center;
-                    max-width: 800px;
-                ">
-                    Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
-                    the <em>company</em> <strong>{display_account}</strong> and 
-                    the <em>industry</em> <strong>{display_industry}</strong> based on the 
-                    <em>problem statement</em> you shared.<br>
-                    In case you find something off, there's a provision to share feedback at the bottom 
-                    we encourage you to use it.
-                </p>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
-    st.markdown(formatted_vocab, unsafe_allow_html=True)
 # ========================
 # 💬 USER FEEDBACK (VISIBLE ONLY AFTER ANALYSIS)
 # ========================
@@ -2069,7 +1999,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
         if not feedback_option:
             st.info("👉 Please select a feedback option above to continue.")
 
-        # ✅ Option 1 — “Found it useful”
+        # ✅ Option 1 — "Found it useful"
         elif feedback_option == "I have read it, found it useful, thanks.":
 
             st.markdown("**Thank you! Please confirm your details before submitting your feedback.**")
@@ -2098,7 +2028,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
                             st.success("✅ Your feedback and details have been recorded.")
                             st.rerun()
 
-        # ✅ Option 2 — “Definitions off”
+        # ✅ Option 2 — "Definitions off"
         elif feedback_option == "I have read it, found some definitions to be off.":
             with st.form("feedback_form_2", clear_on_submit=True):
                 st.markdown("**Please provide details about the definitions you found off:**")
@@ -2141,7 +2071,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
                             st.success("✅ Thank you! Your feedback has been submitted.")
                             st.rerun()
 
-        # ✅ Option 3 — “Feature Suggestions”
+        # ✅ Option 3 — "Feature Suggestions"
         elif feedback_option == "The widget seems interesting, but I have some suggestions on the features.":
             with st.form("feedback_form_3", clear_on_submit=True):
                 st.markdown("**Please share your suggestions for improvement:**")
@@ -2213,7 +2143,7 @@ Generated by Vocabulary Analysis Tool
         else:
             st.info("No vocabulary available for download. Please complete the analysis first.")
 
-        # ========================
+# ========================
 # 🧩 ADMIN ACCESS ICON (appears after download)
 # ========================
 if "show_admin_panel" not in st.session_state:
@@ -2325,6 +2255,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
