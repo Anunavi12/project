@@ -1272,98 +1272,45 @@ AUTH_TOKEN = None
 HEADERS_BASE = {"Content-Type": "application/json"}
 
 # ================================
-# 🏢 Account & Industry Mapping (Auto-Sync + Host Safe)
+# 🏢 Account & Industry Mapping (Host-Safe)
 # ================================
 
-# --- Safe Defaults (Prevents AttributeError on first load) ---
+# --- Safe Defaults ---
 if "account" not in st.session_state:
     st.session_state.account = "Select Account"
 if "industry" not in st.session_state:
     st.session_state.industry = "Select Industry"
 
-# --- Mapping Definitions ---
-ACCOUNT_INDUSTRY_MAP = {
-    "Select Account": "Select Industry",
-    "Abbvie": "Pharma", "BMS": "Pharma", "BLR Airport": "Other",
-    "Chevron": "Energy", "Coles": "Retail", "DELL": "Technology",
-    "Microsoft": "Technology", "Mu Labs": "Technology", "Nike": "Consumer Goods",
-    "Skill Development": "Education", "Southwest Airlines": "Airlines",
-    "Sabic": "Energy", "Johnson & Johnson": "Pharma", "THD": "Retail",
-    "Tmobile": "Telecom", "Walmart": "Retail",
-    # Rest of accounts...
-    "Pfizer": "Pharma", "Novartis": "Pharma", "Merck": "Pharma", "Roche": "Pharma",
-    "IBM": "Technology", "Oracle": "Technology", "SAP": "Technology",
-    "Salesforce": "Technology", "Adobe": "Technology",
-    "Target": "Retail", "Costco": "Retail", "Kroger": "Retail", "Tesco": "Retail",
-    "Carrefour": "Retail", "Delta Airlines": "Airlines", "United Airlines": "Airlines",
-    "American Airlines": "Airlines", "Emirates": "Airlines", "Lufthansa": "Airlines",
-    "Adidas": "Consumer Goods", "Unilever": "Consumer Goods", "Procter & Gamble": "Consumer Goods",
-    "Coca-Cola": "Consumer Goods", "PepsiCo": "Consumer Goods", "Mars": "Consumer Goods",
-    "ExxonMobil": "Energy", "Shell": "Energy", "BP": "Energy", "TotalEnergies": "Energy",
-    "JPMorgan Chase": "Finance", "Bank of America": "Finance", "Wells Fargo": "Finance",
-    "Goldman Sachs": "Finance", "Morgan Stanley": "Finance", "Citigroup": "Finance",
-    "UnitedHealth": "Healthcare", "CVS Health": "Healthcare", "Anthem": "Healthcare",
-    "Humana": "Healthcare", "Kaiser Permanente": "Healthcare",
-    "FedEx": "Logistics", "UPS": "Logistics", "DHL": "Logistics", "Maersk": "Logistics",
-    "Amazon Logistics": "Logistics", "Amazon": "E-commerce", "Alibaba": "E-commerce",
-    "eBay": "E-commerce", "Shopify": "E-commerce", "Flipkart": "E-commerce",
-    "Tesla": "Automotive", "Ford": "Automotive", "General Motors": "Automotive",
-    "Toyota": "Automotive", "Volkswagen": "Automotive",
-    "Marriott": "Hospitality", "Hilton": "Hospitality", "Hyatt": "Hospitality", "Airbnb": "Hospitality",
-    "Coursera": "Education", "Udemy": "Education", "Khan Academy": "Education",
-    "Others": "Other"
-}
-
-# --- Priority Account Order ---
-PRIORITY_ACCOUNTS = [
-    "Abbvie", "BMS", "BLR Airport", "Chevron", "Coles", "DELL",
-    "Microsoft", "Mars", "Mu Labs", "Nike", "Skill Development",
-    "Southwest Airlines", "Sabic", "Johnson & Johnson", "THD",
-    "Tmobile", "Walmart"
-]
-
-# --- Remaining Accounts (sorted) ---
-OTHER_ACCOUNTS = sorted([
-    acc for acc in ACCOUNT_INDUSTRY_MAP.keys()
-    if acc not in PRIORITY_ACCOUNTS and acc != "Select Account"
-])
-OTHER_ACCOUNTS.append("Others")
-
-# --- Final Ordered List ---
-ACCOUNTS = ["Select Account"] + PRIORITY_ACCOUNTS + OTHER_ACCOUNTS
-
-# --- Industries (unique + sorted) ---
-INDUSTRIES = sorted(set(ACCOUNT_INDUSTRY_MAP.values()))
-if "Select Industry" not in INDUSTRIES:
-    INDUSTRIES.insert(0, "Select Industry")
-
-# --- ✅ Auto Update Callback ---
+# --- Callback Function ---
 def update_industry_from_account():
-    selected = st.session_state.account_selector
+    selected = st.session_state.account_dropdown
     st.session_state.industry = ACCOUNT_INDUSTRY_MAP.get(selected, "Select Industry")
 
-# ================================
-# 🧩 Streamlit UI Section
-# ================================
+# --- Section Header ---
 st.markdown('<div class="section-title-box"><h3>Account & Industry</h3></div>', unsafe_allow_html=True)
+
 col1, col2 = st.columns(2)
 
 with col1:
-    st.selectbox(
+    selected_account = st.selectbox(
         "Select Account:",
         ACCOUNTS,
         index=ACCOUNTS.index(st.session_state.account) if st.session_state.account in ACCOUNTS else 0,
-        key="account_selector",
-        on_change=update_industry_from_account,  # 🔁 Auto-sync callback
+        key="account_dropdown",  # ✅ changed to unique key
+        on_change=update_industry_from_account
     )
+    # Sync state (for safety)
+    st.session_state.account = selected_account
 
 with col2:
-    st.selectbox(
+    selected_industry = st.selectbox(
         "Industry:",
         INDUSTRIES,
         index=INDUSTRIES.index(st.session_state.industry) if st.session_state.industry in INDUSTRIES else 0,
-        key="industry_selector",
+        key="industry_dropdown"  # ✅ unique key
     )
+    # Sync state
+    st.session_state.industry = selected_industry
 
 
 # === API CONFIGURATION ===
@@ -2258,5 +2205,6 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
