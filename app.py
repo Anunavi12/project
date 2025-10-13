@@ -1933,6 +1933,7 @@ if st.session_state.current_page == "page1":
             st.session_state.show_vocabulary = True
             st.success("✅ Vocabulary extraction complete!")
             st.rerun()
+
 # ---- Show Vocabulary Directly After Analysis ----
 if st.session_state.current_page == "page1" and st.session_state.analysis_complete and st.session_state.show_vocabulary:
     vocab_text = st.session_state.outputs.get("vocabulary", "")
@@ -2003,7 +2004,6 @@ if st.session_state.current_page == "page1" and st.session_state.analysis_comple
 
     # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
     st.markdown(formatted_vocab, unsafe_allow_html=True)
-
 # ========================
 # 💬 USER FEEDBACK (VISIBLE ONLY AFTER ANALYSIS)
 # ========================
@@ -2291,6 +2291,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
