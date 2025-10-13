@@ -1271,13 +1271,15 @@ TENANT_ID = "talos"
 AUTH_TOKEN = None
 HEADERS_BASE = {"Content-Type": "application/json"}
 
-# -----------------------------
-# EXPANDED ACCOUNTS with Industry Mapping (CORRECTED VERSION)
-# -----------------------------
+# ================================
+# 🏢 Account & Industry Mapping (Auto-Sync + Host Safe)
+# ================================
+
+# --- Mapping Definitions ---
 ACCOUNT_INDUSTRY_MAP = {
     "Select Account": "Select Industry",
 
-    # --- Priority Accounts (shown first) ---
+    # --- Priority Accounts ---
     "Abbvie": "Pharma",
     "BMS": "Pharma",
     "BLR Airport": "Other",
@@ -1295,139 +1297,113 @@ ACCOUNT_INDUSTRY_MAP = {
     "Tmobile": "Telecom",
     "Walmart": "Retail",
 
-    # --- Rest of the Accounts ---
-    # Pharmaceutical
-    "Pfizer": "Pharma",
-    "Novartis": "Pharma",
-    "Merck": "Pharma",
-    "Roche": "Pharma",
+    # --- Pharma ---
+    "Pfizer": "Pharma", "Novartis": "Pharma", "Merck": "Pharma", "Roche": "Pharma",
 
-    # Technology
-    "IBM": "Technology",
-    "Oracle": "Technology",
-    "SAP": "Technology",
-    "Salesforce": "Technology",
-    "Adobe": "Technology",
+    # --- Technology ---
+    "IBM": "Technology", "Oracle": "Technology", "SAP": "Technology", 
+    "Salesforce": "Technology", "Adobe": "Technology",
 
-    # Retail
-    "Target": "Retail",
-    "Costco": "Retail",
-    "Kroger": "Retail",
-    "Tesco": "Retail",
-    "Carrefour": "Retail",
+    # --- Retail ---
+    "Target": "Retail", "Costco": "Retail", "Kroger": "Retail", 
+    "Tesco": "Retail", "Carrefour": "Retail",
 
-    # Airlines
-    "Delta Airlines": "Airlines",
-    "United Airlines": "Airlines",
-    "American Airlines": "Airlines",
-    "Emirates": "Airlines",
-    "Lufthansa": "Airlines",
+    # --- Airlines ---
+    "Delta Airlines": "Airlines", "United Airlines": "Airlines", 
+    "American Airlines": "Airlines", "Emirates": "Airlines", "Lufthansa": "Airlines",
 
-    # Consumer Goods
-    "Adidas": "Consumer Goods",
-    "Unilever": "Consumer Goods",
-    "Procter & Gamble": "Consumer Goods",
-    "Coca-Cola": "Consumer Goods",
-    "PepsiCo": "Consumer Goods",
+    # --- Consumer Goods ---
+    "Adidas": "Consumer Goods", "Unilever": "Consumer Goods", 
+    "Procter & Gamble": "Consumer Goods", "Coca-Cola": "Consumer Goods", 
+    "PepsiCo": "Consumer Goods", "Mars": "Consumer Goods",
 
-    # Energy
-    "ExxonMobil": "Energy",
-    "Shell": "Energy",
-    "BP": "Energy",
-    "TotalEnergies": "Energy",
+    # --- Energy ---
+    "ExxonMobil": "Energy", "Shell": "Energy", "BP": "Energy", "TotalEnergies": "Energy",
 
-    # Finance
-    "JPMorgan Chase": "Finance",
-    "Bank of America": "Finance",
-    "Wells Fargo": "Finance",
-    "Goldman Sachs": "Finance",
-    "Morgan Stanley": "Finance",
-    "Citigroup": "Finance",
+    # --- Finance ---
+    "JPMorgan Chase": "Finance", "Bank of America": "Finance", 
+    "Wells Fargo": "Finance", "Goldman Sachs": "Finance", 
+    "Morgan Stanley": "Finance", "Citigroup": "Finance",
 
-    # Healthcare
-    "UnitedHealth": "Healthcare",
-    "CVS Health": "Healthcare",
-    "Anthem": "Healthcare",
-    "Humana": "Healthcare",
-    "Kaiser Permanente": "Healthcare",
+    # --- Healthcare ---
+    "UnitedHealth": "Healthcare", "CVS Health": "Healthcare", 
+    "Anthem": "Healthcare", "Humana": "Healthcare", "Kaiser Permanente": "Healthcare",
 
-    # Logistics
-    "FedEx": "Logistics",
-    "UPS": "Logistics",
-    "DHL": "Logistics",
-    "Maersk": "Logistics",
-    "Amazon Logistics": "Logistics",
+    # --- Logistics ---
+    "FedEx": "Logistics", "UPS": "Logistics", "DHL": "Logistics", 
+    "Maersk": "Logistics", "Amazon Logistics": "Logistics",
 
-    # E-commerce
-    "Amazon": "E-commerce",
-    "Alibaba": "E-commerce",
-    "eBay": "E-commerce",
-    "Shopify": "E-commerce",
-    "Flipkart": "E-commerce",
+    # --- E-commerce ---
+    "Amazon": "E-commerce", "Alibaba": "E-commerce", "eBay": "E-commerce", 
+    "Shopify": "E-commerce", "Flipkart": "E-commerce",
 
-    # Automotive
-    "Tesla": "Automotive",
-    "Ford": "Automotive",
-    "General Motors": "Automotive",
-    "Toyota": "Automotive",
-    "Volkswagen": "Automotive",
+    # --- Automotive ---
+    "Tesla": "Automotive", "Ford": "Automotive", "General Motors": "Automotive", 
+    "Toyota": "Automotive", "Volkswagen": "Automotive",
 
-    # Hospitality
-    "Marriott": "Hospitality",
-    "Hilton": "Hospitality",
-    "Hyatt": "Hospitality",
-    "Airbnb": "Hospitality",
+    # --- Hospitality ---
+    "Marriott": "Hospitality", "Hilton": "Hospitality", 
+    "Hyatt": "Hospitality", "Airbnb": "Hospitality",
 
-    # Education
-    "Coursera": "Education",
-    "Udemy": "Education",
-    "Khan Academy": "Education",
-    "Mars": "Consumer Goods",  # CORRECTED: Mars should be Consumer Goods, not Confectionery
+    # --- Education ---
+    "Coursera": "Education", "Udemy": "Education", "Khan Academy": "Education"
 }
+
+# --- Add 'Others' entry ---
+ACCOUNT_INDUSTRY_MAP["Others"] = "Other"
 
 # --- Priority Account Order ---
 PRIORITY_ACCOUNTS = [
     "Abbvie", "BMS", "BLR Airport", "Chevron", "Coles", "DELL",
-    "Microsoft", "Mars", "Mu Labs", "Nike", "Skill Development",  # CORRECTED: Mars was missing comma
-    "Southwest Airlines", "Sabic", "Johnson & Johnson",
-    "THD", "Tmobile", "Walmart"
+    "Microsoft", "Mars", "Mu Labs", "Nike", "Skill Development",
+    "Southwest Airlines", "Sabic", "Johnson & Johnson", "THD",
+    "Tmobile", "Walmart"
 ]
 
-# --- Add Remaining Accounts (Alphabetically), keeping 'Others' at the end ---
+# --- Remaining Accounts (sorted) ---
 OTHER_ACCOUNTS = [
     acc for acc in ACCOUNT_INDUSTRY_MAP.keys()
     if acc not in PRIORITY_ACCOUNTS and acc != "Select Account"
 ]
 OTHER_ACCOUNTS.sort()
+OTHER_ACCOUNTS.append("Others")
 
-# Add "Others" account to both lists
-OTHER_ACCOUNTS.append("Others")  # ✅ Keep Others at last
-
-# --- Final Ordered Account List ---
+# --- Final Ordered List ---
 ACCOUNTS = ["Select Account"] + PRIORITY_ACCOUNTS + OTHER_ACCOUNTS
 
-# --- Add 'Others' Industry mapping ---
-ACCOUNT_INDUSTRY_MAP["Others"] = "Other"
+# --- Industries (unique + sorted) ---
+INDUSTRIES = sorted(set(ACCOUNT_INDUSTRY_MAP.values()))
+if "Select Industry" not in INDUSTRIES:
+    INDUSTRIES.insert(0, "Select Industry")
 
-# --- Unique Industries ---
-# Remove "Confectionery" and "Select Industry" from the industries list
-all_industries = list(set(ACCOUNT_INDUSTRY_MAP.values()))
-# Filter out "Select Industry" and any non-standard industries
-INDUSTRIES = sorted([industry for industry in all_industries 
-                    if industry != "Select Industry"])
+# --- ✅ Auto Update Callback ---
+def update_industry_from_account():
+    selected = st.session_state.account_selector
+    mapped_industry = ACCOUNT_INDUSTRY_MAP.get(selected, "Select Industry")
+    st.session_state.industry = mapped_industry
 
-# Ensure "Other" is included in industries
-if "Other" not in INDUSTRIES:
-    INDUSTRIES.append("Other")
-INDUSTRIES.sort()
+# ================================
+# 🧩 Streamlit UI Section
+# ================================
+st.markdown('<div class="section-title-box"><h3>Account & Industry</h3></div>', unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
-# Add "Select Industry" at the beginning
-INDUSTRIES = ["Select Industry"] + INDUSTRIES
+with col1:
+    st.selectbox(
+        "Select Account:",
+        ACCOUNTS,
+        index=ACCOUNTS.index(st.session_state.account) if st.session_state.account in ACCOUNTS else 0,
+        key="account_selector",
+        on_change=update_industry_from_account,  # 🔁 Auto-sync callback
+    )
 
-# Debug info (you can remove this in production)
-print(f"Total Accounts: {len(ACCOUNTS)}")
-print(f"Total Industries: {len(INDUSTRIES)}")
-print(f"Industries: {INDUSTRIES}")
+with col2:
+    st.selectbox(
+        "Industry:",
+        INDUSTRIES,
+        index=INDUSTRIES.index(st.session_state.industry) if st.session_state.industry in INDUSTRIES else 0,
+        key="industry_selector",
+    )
 
 # === API CONFIGURATION ===
 API_CONFIGS = [
@@ -2321,3 +2297,4 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
