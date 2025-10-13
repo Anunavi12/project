@@ -1458,80 +1458,159 @@ def sanitize_text(text):
     
     return text.strip()
 
-def format_vocabulary_with_bold(text):
+
+import re
+
+def format_vocabulary_with_bold(text, extra_phrases=None):
     """
-    Format vocabulary text with compact spacing and heading rules:
-      - Replace ' - ' (space-hyphen-space) with ' : '
-      - Normalize list markers (-, *) to •
-      - Bold only the left-of-colon heading (e.g., "Formula:") and only "Step N:" (not the text after)
-      - Small consistent spacing line-to-line; slightly larger spacing paragraph-to-paragraph
+    Updated formatter rules (high-level):
+      - Replace ' - ' with ' :'
+      - Normalize bullets (-, *) -> •
+      - If a numbered heading has a colon (e.g. '10. Heading:'), bold ONLY the numbered heading (left-of-colon).
+      - If a numbered heading has NO colon (e.g. '2. Heading'), bold the whole numbered heading line and its immediate continuation lines.
+      - 'Step N:' bolds the whole block (line + continuation lines).
+      - extra_phrases: optional list of strings/regex to bold wherever they appear.
     """
     if not text:
         return "No vocabulary data available"
 
-    clean_text = sanitize_text(text)
+    # If you have sanitize_text, keep it; otherwise fall back to identity.
+    try:
+        clean_text = sanitize_text(text)
+    except NameError:
+        clean_text = text
 
-    # replace ' - ' separators with ' : '
+    # basic normalization
     clean_text = clean_text.replace(" - ", " : ")
-
-    # normalize common bullet markers to '• ' (only when they appear at start or after newline)
     clean_text = re.sub(r'(?m)^\s*[-*]\s+', '• ', clean_text)
 
-    # split into paragraphs (two or more newlines -> paragraph boundary)
-    paragraphs = re.split(r'\n{2,}', clean_text)
+    # prepare extra phrase patterns
+    extra_patterns = []
+    if extra_phrases:
+        for p in extra_phrases:
+            if any(ch in p for ch in r".^$*+?{}[]\|()"):
+                extra_patterns.append(p)
+            else:
+                extra_patterns.append(re.escape(p))
 
+    lines = clean_text.splitlines()
+    n = len(lines)
+    i = 0
     paragraph_html = []
-    for para in paragraphs:
-        # split paragraph into lines, trim whitespace
-        lines = [ln.strip() for ln in para.splitlines() if ln.strip()]
 
-        if not lines:
+    def collect_continuation(start_idx):
+        """Collect continuation lines for block-style headings (indented or starting lowercase)."""
+        block_lines = [lines[start_idx].rstrip()]
+        j = start_idx + 1
+        while j < n:
+            next_line = lines[j]
+            if not next_line.strip():  # paragraph boundary
+                break
+            if re.match(r'^\s+', next_line) or re.match(r'^\s*[a-z]', next_line):
+                block_lines.append(next_line.rstrip())
+                j += 1
+                continue
+            if re.match(r'^\s*(?:•|-|\d+\.)\s+', next_line):
+                break
+            break
+        return block_lines, j
+
+    while i < n:
+        ln = lines[i].rstrip()
+        if not ln.strip():
+            paragraph_html.append('')  # paragraph break marker
+            i += 1
             continue
 
-        processed_lines = []
-        for ln in lines:
-            # 1) Step lines: "Step 1:" (bold only the "Step 1:" part)
-            m_step = re.match(r'^\s*(Step\s*\d+\s*:)\s*(.*)$', ln, flags=re.IGNORECASE)
-            if m_step:
-                step_tag = m_step.group(1).strip()
-                rest = m_step.group(2).strip()
-                if rest:
-                    processed_lines.append(f"<strong>{step_tag}</strong> {rest}")
-                else:
-                    processed_lines.append(f"<strong>{step_tag}</strong>")
+        # 1) extra phrases (inline replacements)
+        if extra_patterns:
+            new_ln = ln
+            for pat in extra_patterns:
+                try:
+                    new_ln = re.sub(pat, lambda m: f"<strong>{m.group(0)}</strong>", new_ln, flags=re.IGNORECASE)
+                except re.error:
+                    new_ln = re.sub(re.escape(pat), lambda m: f"<strong>{m.group(0)}</strong>", new_ln, flags=re.IGNORECASE)
+            if new_ln != ln:
+                paragraph_html.append(new_ln)
+                i += 1
                 continue
 
-            # 2) Bullet/numbered heading with colon, e.g. "• Heading: rest" or "1. Heading: rest"
-            m_bullet_heading = re.match(r'^\s*(?:•|\d+\.)\s*([^:]+):\s*(.*)$', ln)
-            if m_bullet_heading:
-                heading = m_bullet_heading.group(1).strip()
-                remainder = m_bullet_heading.group(2).strip()
-                # preserve bullet symbol at line start
-                processed_lines.append(f"• <strong>{heading}:</strong> {remainder}" if remainder else f"• <strong>{heading}:</strong>")
-                continue
+        # 2) Step N: anywhere -> bold entire block (line + continuation)
+        if re.search(r'(Step\s*\d+\s*:)', ln, flags=re.IGNORECASE):
+            block, j = collect_continuation(i)
+            block_text = "<br>".join([b.strip() for b in block])
+            paragraph_html.append(f"<strong>{block_text}</strong>")
+            i = j
+            continue
 
-            # 3) Generic inline heading "LeftOfColon: rest" (no bullet)
-            m_side = re.match(r'^\s*([^:]+):\s*(.*)$', ln)
-            if m_side:
-                left = m_side.group(1).strip()
-                right = m_side.group(2).strip()
-                # Heuristic: if left is short (<=8 words) treat as heading
-                if len(left.split()) <= 8:
-                    processed_lines.append(f"<strong>{left}:</strong> {right}" if right else f"<strong>{left}:</strong>")
-                    continue
+        # 3) Numbered heading WITH colon: bold only left-of-colon (the numbered heading)
+        m_num_colon = re.match(r'^\s*(\d+\.\s+[^:]+):\s*(.*)$', ln)
+        if m_num_colon:
+            heading = m_num_colon.group(1).strip()
+            remainder = m_num_colon.group(2).strip()
+            if remainder:
+                paragraph_html.append(f"<strong>{heading}:</strong> {remainder}")
+            else:
+                paragraph_html.append(f"<strong>{heading}:</strong>")
+            i += 1
+            continue
 
-            # 4) Fallback: plain line
-            processed_lines.append(ln)
+        # 4) Numbered heading WITHOUT colon: bold whole block (line + continuation) — previous behavior
+        m_num_no_colon = re.match(r'^\s*(\d+\.\s+.+)$', ln)
+        if m_num_no_colon:
+            block, j = collect_continuation(i)
+            block_text = "<br>".join([b.strip() for b in block])
+            paragraph_html.append(f"<strong>{block_text}</strong>")
+            i = j
+            continue
 
-        # join lines within paragraph with a single <br> (small, consistent spacing)
-        para_html = "<br>".join(processed_lines)
+        # 5) Bullet/heading with colon (non-numbered): bold left-of-colon
+        m_bullet_heading = re.match(r'^\s*(?:•|\d+\.)\s*([^:]+):\s*(.*)$', ln)
+        if m_bullet_heading:
+            heading = m_bullet_heading.group(1).strip()
+            remainder = m_bullet_heading.group(2).strip()
+            if remainder:
+                paragraph_html.append(f"• <strong>{heading}:</strong> {remainder}")
+            else:
+                paragraph_html.append(f"• <strong>{heading}:</strong>")
+            i += 1
+            continue
 
-        # wrap paragraph with small vertical margins (slightly larger between paragraphs than between lines)
-        paragraph_html.append(f"<p style='margin:6px 0; line-height:1.45; font-size:0.98rem;'>{para_html}</p>")
+        # 6) Generic inline heading "LeftOfColon: rest" -> bold left-of-colon if short
+        m_side = re.match(r'^\s*([^:]+):\s*(.*)$', ln)
+        if m_side and len(m_side.group(1).split()) <= 8:
+            left = m_side.group(1).strip()
+            right = m_side.group(2).strip()
+            paragraph_html.append(f"<strong>{left}:</strong> {right}" if right else f"<strong>{left}:</strong>")
+            i += 1
+            continue
 
-    final_html = "\n".join(paragraph_html)
+        # 7) Full-line special-case "Revenue Growth Rate"
+        if re.fullmatch(r'\s*Revenue\s+Growth\s+Rate\s*', ln, flags=re.IGNORECASE):
+            paragraph_html.append(f"<strong>{ln.strip()}</strong>")
+            i += 1
+            continue
 
-    # container style keeps spacing compact and consistent
+        # default
+        paragraph_html.append(ln)
+        i += 1
+
+    # group into paragraphs
+    final_paragraphs = []
+    temp_lines = []
+    for entry in paragraph_html:
+        if entry == '':
+            if temp_lines:
+                final_paragraphs.append("<br>".join(temp_lines))
+                temp_lines = []
+        else:
+            temp_lines.append(entry)
+    if temp_lines:
+        final_paragraphs.append("<br>".join(temp_lines))
+
+    para_wrapped = [f"<p style='margin:6px 0; line-height:1.45; font-size:0.98rem;'>{p}</p>" for p in final_paragraphs]
+    final_html = "\n".join(para_wrapped)
+
     formatted_output = f"""
     <div style="
         background: var(--bg-card);
@@ -1549,9 +1628,9 @@ def format_vocabulary_with_bold(text):
     </div>
     """
 
-    # tidy up accidental multiple <br> occurrences
     formatted_output = re.sub(r'(<br>\s*){3,}', '<br><br>', formatted_output)
     return formatted_output
+
 # -----------------------------
 # Session State Initialization
 # -----------------------------
