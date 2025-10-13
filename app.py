@@ -1838,37 +1838,37 @@ if st.session_state.current_page == "page1":
         if warning_messages:
             for msg in warning_messages:
                 st.warning(msg)
-# ---- Buttons ----
-analyze_btn = False  # ✅ Predefine to silence Pylance warning safely
 
-if not st.session_state.analysis_complete:
-    analyze_btn = st.button(
-        "Extract Vocabulary",
-        type="primary",
-        use_container_width=True,
-        disabled=not (
-            st.session_state.problem_text.strip()
-            and st.session_state.account != "Select Account"
-            and st.session_state.industry != "Select Industry"
-        ),
-        key="analyze_btn"
-    )
-else:
-    st.markdown("---")
-    st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
-    new_analysis_clicked = st.button(
-        "🔄 Start New Analysis",
-        type="primary",
-        use_container_width=True,
-        key="new_analysis_btn"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
+    # ---- Buttons ----
+    if not st.session_state.analysis_complete:
+        analyze_btn = st.button(
+            "Extract Vocabulary",
+            type="primary",
+            use_container_width=True,
+            disabled=not (
+                st.session_state.problem_text.strip()
+                and st.session_state.account != "Select Account"
+                and st.session_state.industry != "Select Industry"
+            ),
+            key="analyze_btn"
+        )
+    else:
+        st.markdown("---")
+        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
+        new_analysis_clicked = st.button(
+            "🔄 Start New Analysis",
+            type="primary",
+            use_container_width=True,
+            key="new_analysis_btn"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    if new_analysis_clicked:
-        reset_app_state()
-        st.rerun()
+        if new_analysis_clicked:
+            reset_app_state()
+            st.rerun()
+
     # ---- Analysis Action ----
-    if not st.session_state.analysis_complete and analyze_btn:
+    if not st.session_state.analysis_complete and 'analyze_btn' in locals() and analyze_btn:
         # Final validation before processing
         if not is_account_selected:
             st.error("❌ Please select an account before proceeding.")
@@ -1933,7 +1933,6 @@ else:
             st.session_state.show_vocabulary = True
             st.success("✅ Vocabulary extraction complete!")
             st.rerun()
-
 # ---- Show Vocabulary Directly After Analysis ----
 if st.session_state.current_page == "page1" and st.session_state.analysis_complete and st.session_state.show_vocabulary:
     vocab_text = st.session_state.outputs.get("vocabulary", "")
@@ -2292,6 +2291,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
