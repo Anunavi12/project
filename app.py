@@ -1648,78 +1648,40 @@ def init_session_state():
 
 
 def reset_app_state():
-    """Completely reset session state to initial values"""
-    # Clear all session state
-    keys_to_preserve = ['dark_mode']  # Preserve theme setting
-    preserved_state = {key: st.session_state[key] for key in keys_to_preserve if key in st.session_state}
-    
+    """Completely reset session state to initial values for a new analysis"""
+    # Preserve only theme state
+    keys_to_preserve = ['dark_mode']
+    preserved = {k: st.session_state[k] for k in keys_to_preserve if k in st.session_state}
+
+    # Clear all session data
     st.session_state.clear()
-    
-    # Restore preserved state
-    for key, value in preserved_state.items():
-        st.session_state[key] = value
-    
-    # Re-initialize with defaults
-    init_session_state()
-    
-    st.success("✅ Application reset successfully! You can start a new analysis.")
-import time
 
-def save_feedback(
-    feedback_type,
-    name="",
-    email="",
-    message="",
-    off_definitions="",
-    suggestions="",
-):
-    """Unified function to save all feedback types consistently."""
-    try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Restore preserved values
+    for k, v in preserved.items():
+        st.session_state[k] = v
 
-        account = st.session_state.get("analysis_account", "")
-        industry = st.session_state.get("analysis_industry", "")
+    # Explicitly reset core analysis state
+    st.session_state.analysis_complete = False
+    st.session_state.show_vocabulary = False
+    st.session_state.problem_text = ""
+    st.session_state.account = "Select Account"
+    st.session_state.industry = "Select Industry"
+    st.session_state.industry_updated = False
+    st.session_state.analysis_account = ""
+    st.session_state.analysis_industry = ""
+    st.session_state.feedback_submitted = False
+    st.session_state.user_info_collected = False
+    st.session_state.outputs = {}
 
-        # Ensure all text fields are strings
-        def clean(x):
-            if x is None:
-                return ""
-            if callable(x):
-                return ""
-            return str(x).strip()
+    # Clear keys that Streamlit might reuse for selectboxes
+    st.session_state.pop('account_selector_main', None)
+    # This ensures the industry selectbox regenerates with a new key
+    for k in list(st.session_state.keys()):
+        if k.startswith("industry_selector_main_"):
+            st.session_state.pop(k, None)
 
-        entry = {
-            "Timestamp": timestamp,
-            "Name": clean(name),
-            "Email": clean(email),
-            "FeedbackType": clean(feedback_type),
-            "Message": clean(message),
-            "OffDefinitions": clean(off_definitions),
-            "Suggestions": clean(suggestions),
-            "Account": clean(account),
-            "Industry": clean(industry)
-        }
-
-        df_entry = pd.DataFrame([entry])
-
-        # Append to CSV
-        if os.path.exists(FEEDBACK_FILE):
-            existing = pd.read_csv(FEEDBACK_FILE)
-            updated = pd.concat([existing, df_entry], ignore_index=True)
-        else:
-            updated = df_entry
-
-        # Replace any 'None' or NaN with blanks
-        updated = updated.fillna("")
-        updated.replace("None", "", inplace=True)
-
-        updated.to_csv(FEEDBACK_FILE, index=False)
-        st.session_state.feedback_submitted = True
-        return True
-
-    except Exception as e:
-        st.error(f"❌ Error saving feedback: {str(e)}")
-        return False
+    # Trigger fresh rerun (clears widgets visually)
+    st.rerun()
 
 init_session_state()
 
@@ -2363,6 +2325,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
