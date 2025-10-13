@@ -1275,82 +1275,44 @@ HEADERS_BASE = {"Content-Type": "application/json"}
 # 🏢 Account & Industry Mapping (Auto-Sync + Host Safe)
 # ================================
 
+# --- Safe Defaults (Prevents AttributeError on first load) ---
+if "account" not in st.session_state:
+    st.session_state.account = "Select Account"
+if "industry" not in st.session_state:
+    st.session_state.industry = "Select Industry"
+
 # --- Mapping Definitions ---
 ACCOUNT_INDUSTRY_MAP = {
     "Select Account": "Select Industry",
-
-    # --- Priority Accounts ---
-    "Abbvie": "Pharma",
-    "BMS": "Pharma",
-    "BLR Airport": "Other",
-    "Chevron": "Energy",
-    "Coles": "Retail",
-    "DELL": "Technology",
-    "Microsoft": "Technology",
-    "Mu Labs": "Technology",
-    "Nike": "Consumer Goods",
-    "Skill Development": "Education",
-    "Southwest Airlines": "Airlines",
-    "Sabic": "Energy",
-    "Johnson & Johnson": "Pharma",
-    "THD": "Retail",
-    "Tmobile": "Telecom",
-    "Walmart": "Retail",
-
-    # --- Pharma ---
+    "Abbvie": "Pharma", "BMS": "Pharma", "BLR Airport": "Other",
+    "Chevron": "Energy", "Coles": "Retail", "DELL": "Technology",
+    "Microsoft": "Technology", "Mu Labs": "Technology", "Nike": "Consumer Goods",
+    "Skill Development": "Education", "Southwest Airlines": "Airlines",
+    "Sabic": "Energy", "Johnson & Johnson": "Pharma", "THD": "Retail",
+    "Tmobile": "Telecom", "Walmart": "Retail",
+    # Rest of accounts...
     "Pfizer": "Pharma", "Novartis": "Pharma", "Merck": "Pharma", "Roche": "Pharma",
-
-    # --- Technology ---
-    "IBM": "Technology", "Oracle": "Technology", "SAP": "Technology", 
+    "IBM": "Technology", "Oracle": "Technology", "SAP": "Technology",
     "Salesforce": "Technology", "Adobe": "Technology",
-
-    # --- Retail ---
-    "Target": "Retail", "Costco": "Retail", "Kroger": "Retail", 
-    "Tesco": "Retail", "Carrefour": "Retail",
-
-    # --- Airlines ---
-    "Delta Airlines": "Airlines", "United Airlines": "Airlines", 
+    "Target": "Retail", "Costco": "Retail", "Kroger": "Retail", "Tesco": "Retail",
+    "Carrefour": "Retail", "Delta Airlines": "Airlines", "United Airlines": "Airlines",
     "American Airlines": "Airlines", "Emirates": "Airlines", "Lufthansa": "Airlines",
-
-    # --- Consumer Goods ---
-    "Adidas": "Consumer Goods", "Unilever": "Consumer Goods", 
-    "Procter & Gamble": "Consumer Goods", "Coca-Cola": "Consumer Goods", 
-    "PepsiCo": "Consumer Goods", "Mars": "Consumer Goods",
-
-    # --- Energy ---
+    "Adidas": "Consumer Goods", "Unilever": "Consumer Goods", "Procter & Gamble": "Consumer Goods",
+    "Coca-Cola": "Consumer Goods", "PepsiCo": "Consumer Goods", "Mars": "Consumer Goods",
     "ExxonMobil": "Energy", "Shell": "Energy", "BP": "Energy", "TotalEnergies": "Energy",
-
-    # --- Finance ---
-    "JPMorgan Chase": "Finance", "Bank of America": "Finance", 
-    "Wells Fargo": "Finance", "Goldman Sachs": "Finance", 
-    "Morgan Stanley": "Finance", "Citigroup": "Finance",
-
-    # --- Healthcare ---
-    "UnitedHealth": "Healthcare", "CVS Health": "Healthcare", 
-    "Anthem": "Healthcare", "Humana": "Healthcare", "Kaiser Permanente": "Healthcare",
-
-    # --- Logistics ---
-    "FedEx": "Logistics", "UPS": "Logistics", "DHL": "Logistics", 
-    "Maersk": "Logistics", "Amazon Logistics": "Logistics",
-
-    # --- E-commerce ---
-    "Amazon": "E-commerce", "Alibaba": "E-commerce", "eBay": "E-commerce", 
-    "Shopify": "E-commerce", "Flipkart": "E-commerce",
-
-    # --- Automotive ---
-    "Tesla": "Automotive", "Ford": "Automotive", "General Motors": "Automotive", 
+    "JPMorgan Chase": "Finance", "Bank of America": "Finance", "Wells Fargo": "Finance",
+    "Goldman Sachs": "Finance", "Morgan Stanley": "Finance", "Citigroup": "Finance",
+    "UnitedHealth": "Healthcare", "CVS Health": "Healthcare", "Anthem": "Healthcare",
+    "Humana": "Healthcare", "Kaiser Permanente": "Healthcare",
+    "FedEx": "Logistics", "UPS": "Logistics", "DHL": "Logistics", "Maersk": "Logistics",
+    "Amazon Logistics": "Logistics", "Amazon": "E-commerce", "Alibaba": "E-commerce",
+    "eBay": "E-commerce", "Shopify": "E-commerce", "Flipkart": "E-commerce",
+    "Tesla": "Automotive", "Ford": "Automotive", "General Motors": "Automotive",
     "Toyota": "Automotive", "Volkswagen": "Automotive",
-
-    # --- Hospitality ---
-    "Marriott": "Hospitality", "Hilton": "Hospitality", 
-    "Hyatt": "Hospitality", "Airbnb": "Hospitality",
-
-    # --- Education ---
-    "Coursera": "Education", "Udemy": "Education", "Khan Academy": "Education"
+    "Marriott": "Hospitality", "Hilton": "Hospitality", "Hyatt": "Hospitality", "Airbnb": "Hospitality",
+    "Coursera": "Education", "Udemy": "Education", "Khan Academy": "Education",
+    "Others": "Other"
 }
-
-# --- Add 'Others' entry ---
-ACCOUNT_INDUSTRY_MAP["Others"] = "Other"
 
 # --- Priority Account Order ---
 PRIORITY_ACCOUNTS = [
@@ -1361,11 +1323,10 @@ PRIORITY_ACCOUNTS = [
 ]
 
 # --- Remaining Accounts (sorted) ---
-OTHER_ACCOUNTS = [
+OTHER_ACCOUNTS = sorted([
     acc for acc in ACCOUNT_INDUSTRY_MAP.keys()
     if acc not in PRIORITY_ACCOUNTS and acc != "Select Account"
-]
-OTHER_ACCOUNTS.sort()
+])
 OTHER_ACCOUNTS.append("Others")
 
 # --- Final Ordered List ---
@@ -1379,8 +1340,7 @@ if "Select Industry" not in INDUSTRIES:
 # --- ✅ Auto Update Callback ---
 def update_industry_from_account():
     selected = st.session_state.account_selector
-    mapped_industry = ACCOUNT_INDUSTRY_MAP.get(selected, "Select Industry")
-    st.session_state.industry = mapped_industry
+    st.session_state.industry = ACCOUNT_INDUSTRY_MAP.get(selected, "Select Industry")
 
 # ================================
 # 🧩 Streamlit UI Section
@@ -1404,6 +1364,7 @@ with col2:
         index=INDUSTRIES.index(st.session_state.industry) if st.session_state.industry in INDUSTRIES else 0,
         key="industry_selector",
     )
+
 
 # === API CONFIGURATION ===
 API_CONFIGS = [
@@ -2297,4 +2258,5 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
