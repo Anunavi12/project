@@ -1636,10 +1636,10 @@ def init_session_state():
         "hardness_summary_text": "",
         "show_vocabulary": False,
         "industry_updated": False,
-        "feedback_submitted": False,  # NEW: Track if feedback has been submitted
-        "user_info_collected": False,  # NEW: Track if user info was collected during analysis
-        "analysis_account": "",  # NEW: Store account at analysis time
-        "analysis_industry": ""  # NEW: Store industry at analysis time
+        "feedback_submitted": False,
+        "user_info_collected": False,
+        "analysis_account": "",
+        "analysis_industry": ""
     }
     
     for key, default_value in defaults.items():
@@ -1660,22 +1660,11 @@ def reset_app_state():
     for k, v in preserved.items():
         st.session_state[k] = v
 
-    # Explicitly reset core analysis state
-    st.session_state.analysis_complete = False
-    st.session_state.show_vocabulary = False
-    st.session_state.problem_text = ""
-    st.session_state.account = "Select Account"
-    st.session_state.industry = "Select Industry"
-    st.session_state.industry_updated = False
-    st.session_state.analysis_account = ""
-    st.session_state.analysis_industry = ""
-    st.session_state.feedback_submitted = False
-    st.session_state.user_info_collected = False
-    st.session_state.outputs = {}
+    # Re-initialize with all defaults
+    init_session_state()
 
-    # Clear keys that Streamlit might reuse for selectboxes
+    # Clear Streamlit widget keys to force fresh rendering
     st.session_state.pop('account_selector_main', None)
-    # This ensures the industry selectbox regenerates with a new key
     for k in list(st.session_state.keys()):
         if k.startswith("industry_selector_main_"):
             st.session_state.pop(k, None)
@@ -1684,7 +1673,6 @@ def reset_app_state():
     st.rerun()
 
 init_session_state()
-
 # -----------------------------
 # PAGE 1: Business Problem Input & Analysis (Simplified Vocabulary-Only Mode)
 # -----------------------------
@@ -2255,6 +2243,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
