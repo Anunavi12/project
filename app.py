@@ -1738,7 +1738,7 @@ if st.session_state.current_page == "page1":
     """, unsafe_allow_html=True)
 
     # ================================
-    # 💼 Account & Industry Selection UI - MOVED TO HERE (AFTER TITLE)
+    # 💼 Account & Industry Selection UI
     # ================================
     st.markdown('<div class="section-title-box"><h3>Account & Industry Selection</h3></div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -1756,7 +1756,7 @@ if st.session_state.current_page == "page1":
             "Select Account:",
             options=ACCOUNTS,
             index=current_account_index,
-            key="account_selector_main"  # Changed to unique key
+            key="account_selector_main"
         )
 
         # Auto-map logic with rerun
@@ -1776,7 +1776,7 @@ if st.session_state.current_page == "page1":
             current_industry_index = 0
 
         # Dynamic key ensures dropdown refreshes when mapping changes
-        industry_key = f"industry_selector_main_{current_industry}"  # Changed to unique key
+        industry_key = f"industry_selector_main_{current_industry}"
 
         selected_industry = st.selectbox(
             "Industry:",
@@ -1853,6 +1853,78 @@ if st.session_state.current_page == "page1":
             key="analyze_btn"
         )
     else:
+        # Show vocabulary results and "New Analysis" button
+        vocab_text = st.session_state.outputs.get("vocabulary", "")
+        
+        if vocab_text:
+            # ✅ Step 1: Get the pre-formatted HTML from your function
+            formatted_vocab = format_vocabulary_with_bold(vocab_text)
+
+            # ✅ Step 2: Clean HTML entities (important!)
+            formatted_vocab = html.unescape(formatted_vocab)
+            formatted_vocab = formatted_vocab.replace("&lt;", "<").replace("&gt;", ">")
+
+            # ✅ Step 3: Dynamically get account & industry for substitutions
+            account_name = st.session_state.get("analysis_account", "").strip()
+            industry_name = st.session_state.get("analysis_industry", "").strip()
+
+            # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
+            if account_name:
+                # Use a more careful replacement that preserves HTML tags
+                formatted_vocab = re.sub(
+                    r'\bthe company\b', 
+                    account_name, 
+                    formatted_vocab, 
+                    flags=re.IGNORECASE
+                )
+            if industry_name:
+                formatted_vocab = re.sub(
+                    r'\bthe industry\b', 
+                    industry_name, 
+                    formatted_vocab, 
+                    flags=re.IGNORECASE
+                )
+
+            # ✅ Step 5: Fallback display names for header
+            display_account = account_name if account_name else "the company"
+            display_industry = industry_name if industry_name else "the industry"
+
+            # ---- Section Title & Subheading ----
+            st.markdown(f"""
+                <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <h3 style="
+                            margin-bottom:8px;
+                            color:white;
+                            font-weight:800;
+                            font-size:1.4rem;
+                            line-height:1.2;
+                        ">
+                            Vocabulary
+                        </h3>
+                        <p style="
+                            font-size:0.95rem; 
+                            color:white; 
+                            margin:0;
+                            line-height:1.5;
+                            text-align:center;
+                            max-width: 800px;
+                        ">
+                            Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
+                            the <em>company</em> <strong>{display_account}</strong> and 
+                            the <em>industry</em> <strong>{display_industry}</strong> based on the 
+                            <em>problem statement</em> you shared.<br>
+                            In case you find something off, there's a provision to share feedback at the bottom 
+                            we encourage you to use it.
+                        </p>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
+            st.markdown(formatted_vocab, unsafe_allow_html=True)
+
+        # Show "New Analysis" button below vocabulary
         st.markdown("---")
         st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
         new_analysis_clicked = st.button(
@@ -2291,6 +2363,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
