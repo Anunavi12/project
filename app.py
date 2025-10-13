@@ -1648,29 +1648,44 @@ def init_session_state():
 
 
 def reset_app_state():
-    """Completely reset session state to initial values for a new analysis"""
-    # Preserve only theme state
-    keys_to_preserve = ['dark_mode']
-    preserved = {k: st.session_state[k] for k in keys_to_preserve if k in st.session_state}
+    """
+    🚀 Full hard reset — behaves exactly like a fresh app start.
+    Clears all user inputs, selections, and feedback.
+    Keeps only theme and layout styling.
+    Works safely on latest Streamlit Cloud versions.
+    """
+    import time
 
-    # Clear all session data
-    st.session_state.clear()
+    # --- 1️⃣ Preserve theme keys only ---
+    preserve_keys = ['dark_mode', 'theme_radio']
+    preserved = {k: st.session_state[k] for k in preserve_keys if k in st.session_state}
 
-    # Restore preserved values
+    # --- 2️⃣ Completely clear all session data ---
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+    # --- 3️⃣ Restore preserved values ---
     for k, v in preserved.items():
         st.session_state[k] = v
 
-    # Re-initialize with all defaults
-    init_session_state()
+    # --- 4️⃣ Re-initialize base state ---
+    if "init_session_state" in globals():
+        init_session_state()
 
-    # Clear Streamlit widget keys to force fresh rendering
-    st.session_state.pop('account_selector_main', None)
+    # --- 5️⃣ Remove widget cache keys to force rebuild ---
     for k in list(st.session_state.keys()):
-        if k.startswith("industry_selector_main_"):
-            st.session_state.pop(k, None)
+        if k.startswith((
+            "industry_selector_main_", "feedback_", "account_selector_main",
+            "analyze_", "new_analysis_", "admin_", "problem_text_area"
+        )):
+            del st.session_state[k]
 
-    # Trigger fresh rerun (clears widgets visually)
-    st.rerun()
+    # --- 6️⃣ Show confirmation toast ---
+    st.toast("🔄 App fully reset to a fresh state!", icon="✨")
+
+    # --- 7️⃣ Short delay to ensure UI sync, then rerun ---
+    time.sleep(0.3)
+    st.rerun()  # ✅ Official Streamlit rerun (stable since 1.32)
 
 init_session_state()
 # -----------------------------
@@ -1886,8 +1901,10 @@ if st.session_state.current_page == "page1":
         st.markdown('</div>', unsafe_allow_html=True)
 
         if new_analysis_clicked:
-            reset_app_state()
-            st.rerun()
+           st.toast("🧹 Resetting for a new analysis...", icon="🔁")
+           time.sleep(0.3)
+           reset_app_state()
+
 
     # ---- Analysis Action ----
     if not st.session_state.analysis_complete and 'analyze_btn' in locals() and analyze_btn:
@@ -2243,6 +2260,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
