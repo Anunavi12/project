@@ -1272,7 +1272,7 @@ AUTH_TOKEN = None
 HEADERS_BASE = {"Content-Type": "application/json"}
 
 # ================================
-# 🏢 Account & Industry Mapping (Host-Safe)
+# 🏢 Account & Industry Mapping (Safe + Hosted)
 # ================================
 
 # --- Safe Defaults ---
@@ -1281,35 +1281,74 @@ if "account" not in st.session_state:
 if "industry" not in st.session_state:
     st.session_state.industry = "Select Industry"
 
+# --- Account → Industry Mapping ---
+ACCOUNT_INDUSTRY_MAP = {
+    "Select Account": "Select Industry",
+    "Abbvie": "Pharma", "BMS": "Pharma", "BLR Airport": "Other",
+    "Chevron": "Energy", "Coles": "Retail", "DELL": "Technology",
+    "Microsoft": "Technology", "Mu Labs": "Technology",
+    "Nike": "Consumer Goods", "Skill Development": "Education",
+    "Southwest Airlines": "Airlines", "Sabic": "Energy",
+    "Johnson & Johnson": "Pharma", "THD": "Retail",
+    "Tmobile": "Telecom", "Walmart": "Retail",
+    # Some common others
+    "Pfizer": "Pharma", "Novartis": "Pharma", "Merck": "Pharma", "Roche": "Pharma",
+    "IBM": "Technology", "Oracle": "Technology", "SAP": "Technology",
+    "Salesforce": "Technology", "Adobe": "Technology",
+    "Target": "Retail", "Costco": "Retail", "Kroger": "Retail",
+    "Tesco": "Retail", "Carrefour": "Retail", "Others": "Other"
+}
+
+# --- Priority Account List ---
+PRIORITY_ACCOUNTS = [
+    "Abbvie", "BMS", "BLR Airport", "Chevron", "Coles", "DELL",
+    "Microsoft", "Mu Labs", "Nike", "Skill Development",
+    "Southwest Airlines", "Sabic", "Johnson & Johnson",
+    "THD", "Tmobile", "Walmart"
+]
+
+# --- Other Accounts (alphabetically sorted) ---
+OTHER_ACCOUNTS = sorted([
+    acc for acc in ACCOUNT_INDUSTRY_MAP.keys()
+    if acc not in PRIORITY_ACCOUNTS and acc != "Select Account"
+])
+
+# --- Final Account & Industry Lists ---
+ACCOUNTS = ["Select Account"] + PRIORITY_ACCOUNTS + OTHER_ACCOUNTS
+INDUSTRIES = sorted(set(ACCOUNT_INDUSTRY_MAP.values()))
+if "Select Industry" not in INDUSTRIES:
+    INDUSTRIES.insert(0, "Select Industry")
+
 # --- Callback Function ---
 def update_industry_from_account():
     selected = st.session_state.account_dropdown
     st.session_state.industry = ACCOUNT_INDUSTRY_MAP.get(selected, "Select Industry")
 
-# --- Section Header ---
+# ================================
+# 🧩 Streamlit UI Section
+# ================================
 st.markdown('<div class="section-title-box"><h3>Account & Industry</h3></div>', unsafe_allow_html=True)
-
 col1, col2 = st.columns(2)
 
 with col1:
     selected_account = st.selectbox(
         "Select Account:",
         ACCOUNTS,
-        index=ACCOUNTS.index(st.session_state.account) if st.session_state.account in ACCOUNTS else 0,
-        key="account_dropdown",  # ✅ changed to unique key
+        index=ACCOUNTS.index(st.session_state.account)
+        if st.session_state.account in ACCOUNTS else 0,
+        key="account_dropdown",  # ✅ Unique key (no duplicates)
         on_change=update_industry_from_account
     )
-    # Sync state (for safety)
     st.session_state.account = selected_account
 
 with col2:
     selected_industry = st.selectbox(
         "Industry:",
         INDUSTRIES,
-        index=INDUSTRIES.index(st.session_state.industry) if st.session_state.industry in INDUSTRIES else 0,
-        key="industry_dropdown"  # ✅ unique key
+        index=INDUSTRIES.index(st.session_state.industry)
+        if st.session_state.industry in INDUSTRIES else 0,
+        key="industry_dropdown"
     )
-    # Sync state
     st.session_state.industry = selected_industry
 
 
@@ -2205,6 +2244,7 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
 
 
 
