@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import unicodedata
 import pandas as pd
-import html
 
 # Try to import streamlit_javascript (optional dependency)
 try:
@@ -2588,3 +2587,4 @@ if st.session_state.get('current_page', '') == 'admin':
     elif password and password != "":
         st.session_state.admin_authenticated = False
         st.error("❌ Invalid password. Access denied.")
+
