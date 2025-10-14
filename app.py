@@ -1381,7 +1381,6 @@ print(f"Total Accounts: {len(ACCOUNTS)}")
 print(f"Total Industries: {len(INDUSTRIES)}")
 print(f"Industries: {INDUSTRIES}")
 
-
 # === API CONFIGURATION ===
 API_CONFIGS = [
     {
@@ -1636,10 +1635,10 @@ def init_session_state():
         "hardness_summary_text": "",
         "show_vocabulary": False,
         "industry_updated": False,
-        "feedback_submitted": False,
-        "user_info_collected": False,
-        "analysis_account": "",
-        "analysis_industry": ""
+        "feedback_submitted": False,  # NEW: Track if feedback has been submitted
+        "user_info_collected": False,  # NEW: Track if user info was collected during analysis
+        "analysis_account": "",  # NEW: Store account at analysis time
+        "analysis_industry": ""  # NEW: Store industry at analysis time
     }
     
     for key, default_value in defaults.items():
@@ -1648,46 +1647,83 @@ def init_session_state():
 
 
 def reset_app_state():
-    """
-    🚀 Full hard reset — behaves exactly like a fresh app start.
-    Clears all user inputs, selections, and feedback.
-    Keeps only theme and layout styling.
-    Works safely on latest Streamlit Cloud versions.
-    """
-    import time
+    """Completely reset session state to initial values"""
+    # Clear all session state
+    keys_to_preserve = ['dark_mode']  # Preserve theme setting
+    preserved_state = {key: st.session_state[key] for key in keys_to_preserve if key in st.session_state}
+    
+    st.session_state.clear()
+    
+    # Restore preserved state
+    for key, value in preserved_state.items():
+        st.session_state[key] = value
+    
+    # Re-initialize with defaults
+    init_session_state()
+    
+    st.success("✅ Application reset successfully! You can start a new analysis.")
+import time
 
-    # --- 1️⃣ Preserve theme keys only ---
-    preserve_keys = ['dark_mode', 'theme_radio']
-    preserved = {k: st.session_state[k] for k in preserve_keys if k in st.session_state}
+def save_feedback(
+    feedback_type,
+    name="",
+    email="",
+    message="",
+    off_definitions="",
+    suggestions="",
+):
+    """Unified function to save all feedback types consistently."""
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- 2️⃣ Completely clear all session data ---
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
+        account = st.session_state.get("analysis_account", "")
+        industry = st.session_state.get("analysis_industry", "")
 
-    # --- 3️⃣ Restore preserved values ---
-    for k, v in preserved.items():
-        st.session_state[k] = v
+        # Ensure all text fields are strings
+        def clean(x):
+            if x is None:
+                return ""
+            if callable(x):
+                return ""
+            return str(x).strip()
 
-    # --- 4️⃣ Re-initialize base state ---
-    if "init_session_state" in globals():
-        init_session_state()
+        entry = {
+            "Timestamp": timestamp,
+            "Name": clean(name),
+            "Email": clean(email),
+            "FeedbackType": clean(feedback_type),
+            "Message": clean(message),
+            "OffDefinitions": clean(off_definitions),
+            "Suggestions": clean(suggestions),
+            "Account": clean(account),
+            "Industry": clean(industry)
+        }
 
-    # --- 5️⃣ Remove widget cache keys to force rebuild ---
-    for k in list(st.session_state.keys()):
-        if k.startswith((
-            "industry_selector_main_", "feedback_", "account_selector_main",
-            "analyze_", "new_analysis_", "admin_", "problem_text_area"
-        )):
-            del st.session_state[k]
+        df_entry = pd.DataFrame([entry])
 
-    # --- 6️⃣ Show confirmation toast ---
-    st.toast("🔄 App fully reset to a fresh state!", icon="✨")
+        # Append to CSV
+        if os.path.exists(FEEDBACK_FILE):
+            existing = pd.read_csv(FEEDBACK_FILE)
+            updated = pd.concat([existing, df_entry], ignore_index=True)
+        else:
+            updated = df_entry
 
-    # --- 7️⃣ Short delay to ensure UI sync, then rerun ---
-    time.sleep(0.3)
-    st.rerun()  # ✅ Official Streamlit rerun (stable since 1.32)
+        # Replace any 'None' or NaN with blanks
+        updated = updated.fillna("")
+        updated.replace("None", "", inplace=True)
+
+        updated.to_csv(FEEDBACK_FILE, index=False)
+        st.session_state.feedback_submitted = True
+        return True
+
+    except Exception as e:
+        st.error(f"❌ Error saving feedback: {str(e)}")
+        return False
 
 init_session_state()
+if "show_warnings" not in st.session_state:
+    st.session_state.show_warnings = False
+
 # -----------------------------
 # PAGE 1: Business Problem Input & Analysis (Simplified Vocabulary-Only Mode)
 # -----------------------------
@@ -1781,151 +1817,96 @@ if st.session_state.current_page == "page1":
         if not has_vowels:
             return False
         return True
+    # ---- Validation Helper Function ----
+    def is_valid_problem_text(text):
+        """Check if problem text is meaningful (not just random characters)"""
+        if not text or len(text.strip()) < 20:
+            return False
+        # Check if text has at least 3 words
+        words = text.strip().split()
+        if len(words) < 3:
+            return False
+        # Check if text contains mostly random characters (no vowels pattern)
+        vowels = set('aeiouAEIOU')
+        has_vowels = any(c in vowels for c in text)
+        if not has_vowels:
+            return False
+        return True
 
-    # ---- Validation checks ----
-    is_account_selected = st.session_state.account != "Select Account"
-    is_industry_selected = st.session_state.industry != "Select Industry"
-    has_problem_text = bool(st.session_state.problem_text.strip())
-    is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
-    
-    # Display validation warnings
-    if not st.session_state.analysis_complete:
-        warning_messages = []
-        if not is_account_selected:
-            warning_messages.append("⚠️ Please select an account")
-        if not is_industry_selected:
-            warning_messages.append("⚠️ Please select an industry")
-        if has_problem_text and not is_valid_problem:
-            warning_messages.append("⚠️ Please enter a valid business problem description (minimum 20 characters with meaningful content)")
-        elif not has_problem_text:
-            warning_messages.append("⚠️ Please enter a business problem description")
-        
-        if warning_messages:
-            for msg in warning_messages:
-                st.warning(msg)
+   # ---- Validation checks ----
+is_account_selected = st.session_state.account != "Select Account"
+is_industry_selected = st.session_state.industry != "Select Industry"
+has_problem_text = bool(st.session_state.problem_text.strip())
+is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
 
-    # ---- Buttons ----
-    if not st.session_state.analysis_complete:
-        analyze_btn = st.button(
-            "Extract Vocabulary",
-            type="primary",
-            use_container_width=True,
-            disabled=not (
-                st.session_state.problem_text.strip()
-                and st.session_state.account != "Select Account"
-                and st.session_state.industry != "Select Industry"
-            ),
-            key="analyze_btn"
-        )
-    else:
-        # Show vocabulary results and "New Analysis" button
-        vocab_text = st.session_state.outputs.get("vocabulary", "")
-        
-        if vocab_text:
-            # ✅ Step 1: Get the pre-formatted HTML from your function
-            formatted_vocab = format_vocabulary_with_bold(vocab_text)
+# --- Validation helper ---
+def display_warnings():
+    warning_messages = []
+    if not is_account_selected:
+        warning_messages.append("⚠️ Please select an account.")
+    if not is_industry_selected:
+        warning_messages.append("⚠️ Please select an industry.")
+    if has_problem_text and not is_valid_problem:
+        warning_messages.append("⚠️ Please enter a valid business problem (minimum 20 characters).")
+    elif not has_problem_text:
+        warning_messages.append("⚠️ Please enter a business problem description.")
+    for msg in warning_messages:
+        st.warning(msg)
 
-            # ✅ Step 2: Clean HTML entities (important!)
-            formatted_vocab = html.unescape(formatted_vocab)
-            formatted_vocab = formatted_vocab.replace("&lt;", "<").replace("&gt;", ">")
+# --- Trigger warnings only after user action ---
+if st.session_state.show_warnings:
+    display_warnings()
 
-            # ✅ Step 3: Dynamically get account & industry for substitutions
-            account_name = st.session_state.get("analysis_account", "").strip()
-            industry_name = st.session_state.get("analysis_industry", "").strip()
+# ---- Buttons ----
+analyze_btn = False  # ✅ Prevent undefined variable issues
 
-            # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
-            if account_name:
-                # Use a more careful replacement that preserves HTML tags
-                formatted_vocab = re.sub(
-                    r'\bthe company\b', 
-                    account_name, 
-                    formatted_vocab, 
-                    flags=re.IGNORECASE
-                )
-            if industry_name:
-                formatted_vocab = re.sub(
-                    r'\bthe industry\b', 
-                    industry_name, 
-                    formatted_vocab, 
-                    flags=re.IGNORECASE
-                )
+# --- Helper: Validation Checks ---
+is_account_selected = st.session_state.account != "Select Account"
+is_industry_selected = st.session_state.industry != "Select Industry"
+has_problem_text = bool(st.session_state.problem_text.strip())
+is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
 
-            # ✅ Step 5: Fallback display names for header
-            display_account = account_name if account_name else "the company"
-            display_industry = industry_name if industry_name else "the industry"
+# --- Ensure warning flag exists ---
+if "show_warnings" not in st.session_state:
+    st.session_state.show_warnings = False
 
-            # ---- Section Title & Subheading ----
-            st.markdown(f"""
-                <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
-                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                        <h3 style="
-                            margin-bottom:8px;
-                            color:white;
-                            font-weight:800;
-                            font-size:1.4rem;
-                            line-height:1.2;
-                        ">
-                            Vocabulary
-                        </h3>
-                        <p style="
-                            font-size:0.95rem; 
-                            color:white; 
-                            margin:0;
-                            line-height:1.5;
-                            text-align:center;
-                            max-width: 800px;
-                        ">
-                            Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
-                            the <em>company</em> <strong>{display_account}</strong> and 
-                            the <em>industry</em> <strong>{display_industry}</strong> based on the 
-                            <em>problem statement</em> you shared.<br>
-                            In case you find something off, there's a provision to share feedback at the bottom 
-                            we encourage you to use it.
-                        </p>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+# --- Function to show warnings only when triggered ---
+def display_warnings():
+    warning_messages = []
+    if not is_account_selected:
+        warning_messages.append("⚠️ Please select an account.")
+    if not is_industry_selected:
+        warning_messages.append("⚠️ Please select an industry.")
+    if has_problem_text and not is_valid_problem:
+        warning_messages.append("⚠️ Please enter a valid business problem (minimum 20 characters).")
+    elif not has_problem_text:
+        warning_messages.append("⚠️ Please enter a business problem description.")
+    for msg in warning_messages:
+        st.warning(msg)
 
-            # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
-            st.markdown(formatted_vocab, unsafe_allow_html=True)
+# ========================
+# 🧠 STEP 1: Show Analyze Button (Before Completion)
+# ========================
+if not st.session_state.analysis_complete:
+    # --- Only show warnings after first user attempt ---
+    if st.session_state.show_warnings:
+        display_warnings()
 
-        # Show "New Analysis" button below vocabulary
-        st.markdown("---")
-        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
-        new_analysis_clicked = st.button(
-            "🔄 Start New Analysis",
-            type="primary",
-            use_container_width=True,
-            key="new_analysis_btn"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # --- Main Analyze Button ---
+    if st.button(
+        "Extract Vocabulary",
+        type="primary",
+        use_container_width=True,
+        key="analyze_btn",
+    ):
+        st.session_state.show_warnings = True  # now trigger future warnings
 
-        if new_analysis_clicked:
-           st.toast("🧹 Resetting for a new analysis...", icon="🔁")
-           time.sleep(0.3)
-           reset_app_state()
-
-
-    # ---- Analysis Action ----
-    if not st.session_state.analysis_complete and 'analyze_btn' in locals() and analyze_btn:
-        # Final validation before processing
-        if not is_account_selected:
-            st.error("❌ Please select an account before proceeding.")
-            st.stop()
-        
-        if not is_industry_selected:
-            st.error("❌ Please select an industry before proceeding.")
-            st.stop()
-        
-        if not has_problem_text:
-            st.error("❌ Please enter a business problem description.")
-            st.stop()
-        
-        if not is_valid_problem:
-            st.error("❌ Please enter a valid business problem description with meaningful content (minimum 20 characters).")
+        # --- Validation ---
+        if not is_account_selected or not is_industry_selected or not has_problem_text or not is_valid_problem:
+            display_warnings()
             st.stop()
 
-        # ✅ COLLECT USER INFORMATION AT ANALYSIS TIME
+        # ✅ Everything valid — continue to API call
         st.session_state.analysis_account = st.session_state.account
         st.session_state.analysis_industry = st.session_state.industry
         st.session_state.user_info_collected = True
@@ -1939,7 +1920,6 @@ if st.session_state.current_page == "page1":
         Industry: {st.session_state.industry}
         """
 
-        # Prepare headers
         HEADERS = HEADERS_BASE.copy()
         HEADERS.update({"Tenant-ID": TENANT_ID, "X-Tenant-ID": TENANT_ID})
         if AUTH_TOKEN:
@@ -1954,7 +1934,7 @@ if st.session_state.current_page == "page1":
             for i, api_cfg in enumerate(API_CONFIGS):
                 progress.progress(i / total)
                 if api_cfg["name"] != "vocabulary":
-                    continue  # run only vocabulary in this mode
+                    continue
                 try:
                     goal = api_cfg["prompt"](full_context, {})
                     resp = session.post(api_cfg["url"], headers=HEADERS, json={"agency_goal": goal})
@@ -1972,6 +1952,97 @@ if st.session_state.current_page == "page1":
             st.session_state.show_vocabulary = True
             st.success("✅ Vocabulary extraction complete!")
             st.rerun()
+
+# ========================
+# 🔄 STEP 2: New Analysis Button (After Completion)
+# ========================
+else:
+    st.markdown("---")
+    st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
+
+    if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
+        # ✅ Reset all except theme
+        for key in list(st.session_state.keys()):
+            if key not in ["dark_mode"]:
+                del st.session_state[key]
+        st.session_state.analysis_complete = False
+        st.session_state.show_vocabulary = False
+        st.session_state.current_page = "page1"
+        st.session_state.show_warnings = False  # reset warnings too
+        st.toast("🔁 Starting fresh analysis...", icon="♻️")
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+# ---- Show Vocabulary Directly After Analysis ----
+if st.session_state.current_page == "page1" and st.session_state.analysis_complete and st.session_state.show_vocabulary:
+    vocab_text = st.session_state.outputs.get("vocabulary", "")
+    
+    # ✅ Step 1: Get the pre-formatted HTML from your function
+    formatted_vocab = format_vocabulary_with_bold(vocab_text)
+
+    # ✅ Step 2: Clean HTML entities (important!)
+    formatted_vocab = html.unescape(formatted_vocab)
+    formatted_vocab = formatted_vocab.replace("&lt;", "<").replace("&gt;", ">")
+
+    # ✅ Step 3: Dynamically get account & industry for substitutions
+    account_name = st.session_state.get("analysis_account", "").strip()
+    industry_name = st.session_state.get("analysis_industry", "").strip()
+
+    # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
+    if account_name:
+        # Use a more careful replacement that preserves HTML tags
+        formatted_vocab = re.sub(
+            r'\bthe company\b', 
+            account_name, 
+            formatted_vocab, 
+            flags=re.IGNORECASE
+        )
+    if industry_name:
+        formatted_vocab = re.sub(
+            r'\bthe industry\b', 
+            industry_name, 
+            formatted_vocab, 
+            flags=re.IGNORECASE
+        )
+
+    # ✅ Step 5: Fallback display names for header
+    display_account = account_name if account_name else "the company"
+    display_industry = industry_name if industry_name else "the industry"
+
+    # ---- Section Title & Subheading ----
+    st.markdown(f"""
+        <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <h3 style="
+                    margin-bottom:8px;
+                    color:white;
+                    font-weight:800;
+                    font-size:1.4rem;
+                    line-height:1.2;
+                ">
+                    Vocabulary
+                </h3>
+                <p style="
+                    font-size:0.95rem; 
+                    color:white; 
+                    margin:0;
+                    line-height:1.5;
+                    text-align:center;
+                    max-width: 800px;
+                ">
+                    Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
+                    the <em>company</em> <strong>{display_account}</strong> and 
+                    the <em>industry</em> <strong>{display_industry}</strong> based on the 
+                    <em>problem statement</em> you shared.<br>
+                    In case you find something off, there's a provision to share feedback at the bottom 
+                    we encourage you to use it.
+                </p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
+    st.markdown(formatted_vocab, unsafe_allow_html=True)
 
 # ========================
 # 💬 USER FEEDBACK (VISIBLE ONLY AFTER ANALYSIS)
@@ -2004,7 +2075,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
         if not feedback_option:
             st.info("👉 Please select a feedback option above to continue.")
 
-        # ✅ Option 1 — "Found it useful"
+        # ✅ Option 1 — “Found it useful”
         elif feedback_option == "I have read it, found it useful, thanks.":
 
             st.markdown("**Thank you! Please confirm your details before submitting your feedback.**")
@@ -2033,7 +2104,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
                             st.success("✅ Your feedback and details have been recorded.")
                             st.rerun()
 
-        # ✅ Option 2 — "Definitions off"
+        # ✅ Option 2 — “Definitions off”
         elif feedback_option == "I have read it, found some definitions to be off.":
             with st.form("feedback_form_2", clear_on_submit=True):
                 st.markdown("**Please provide details about the definitions you found off:**")
@@ -2076,7 +2147,7 @@ if st.session_state.analysis_complete and st.session_state.show_vocabulary:
                             st.success("✅ Thank you! Your feedback has been submitted.")
                             st.rerun()
 
-        # ✅ Option 3 — "Feature Suggestions"
+        # ✅ Option 3 — “Feature Suggestions”
         elif feedback_option == "The widget seems interesting, but I have some suggestions on the features.":
             with st.form("feedback_form_3", clear_on_submit=True):
                 st.markdown("**Please share your suggestions for improvement:**")
@@ -2148,7 +2219,7 @@ Generated by Vocabulary Analysis Tool
         else:
             st.info("No vocabulary available for download. Please complete the analysis first.")
 
-# ========================
+        # ========================
 # 🧩 ADMIN ACCESS ICON (appears after download)
 # ========================
 if "show_admin_panel" not in st.session_state:
@@ -2260,17 +2331,3 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
