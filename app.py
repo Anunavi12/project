@@ -1959,18 +1959,16 @@ if not st.session_state.analysis_complete:
 else:
     st.markdown("---")
     st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
-
-   if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
-    # Reset everything including selections and text
-    for key in list(st.session_state.keys()):
-        if key not in ["dark_mode"]:
-            del st.session_state[key]
+    if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
+        for key in list(st.session_state.keys()):
+            if key not in ["dark_mode"]:
+                del st.session_state[key]
 
     # ✅ Add a reset token so widget keys refresh
-    st.session_state["reset_token"] = str(random.randint(1000, 9999))
+        st.session_state["reset_token"] = str(random.randint(1000, 9999))
 
-    st.toast("🔁 Starting fresh analysis...", icon="♻️")
-    st.rerun()
+        st.toast("🔁 Starting fresh analysis...", icon="♻️")
+        st.rerun()
 
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -2332,4 +2330,3 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
-
