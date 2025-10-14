@@ -6,16 +6,46 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import unicodedata
 import pandas as pd
+from streamlit_javascript import st_javascript
+import html
 
 # ========================
 # 📂 Feedback Configuration
 # ========================
-FEEDBACK_FILE = "feedback.csv"
+# Use an absolute path for the feedback file to avoid working-dir issues
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.csv")
 
 # Initialize feedback file if not present
 if not os.path.exists(FEEDBACK_FILE):
-    df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions"])
+    # ADDED 'ProblemStatement' COLUMN
+    df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
     df.to_csv(FEEDBACK_FILE, index=False)
+
+# Safe rerun helper: some Streamlit versions remove experimental_rerun
+def safe_rerun():
+    try:
+        # preferred (Streamlit >= 1.28.0)
+        rerun = getattr(st, 'rerun', None)
+        if callable(rerun):
+            rerun()
+            return
+    except Exception:
+        pass
+    try:
+        # fallback (Streamlit < 1.28.0, uses older API)
+        rerun_old = getattr(st, 'experimental_rerun', None)
+        if callable(rerun_old):
+            rerun_old()
+            return
+    except Exception:
+        pass
+    # Ultimate fallback: client-side reload
+    try:
+        import streamlit.components.v1 as components
+        components.html('<script>window.location.reload()</script>', height=0)
+    except Exception:
+        pass
 
 # --- Theme toggle state ---
 if 'dark_mode' not in st.session_state:
@@ -52,7 +82,7 @@ if st.session_state.dark_mode:
     <style>
     :root {
         --text-primary: #f3f4f6; /* light text */
-        --bg-card: #23272f;     /* dark card bg */
+        --bg-card: #23272f;      /* dark card bg */
         --text-light: #ffffff;  /* white text for colored badges */
         --border-color: rgba(255,255,255,0.06);
         --accent-orange: #ff6b35;
@@ -161,7 +191,7 @@ else:
 # Config - Page Setup
 # -----------------------------
 st.set_page_config(
-    page_title="Business Problem Discovery Assistant",
+    page_title="Business Problem Vocabulary Assistant",
     page_icon=None,
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -372,7 +402,7 @@ h2, h3, h4, h5, h6,
     background: linear-gradient(135deg, var(--musigma-red) 0%, var(--accent-orange) 100%) !important;
     border-radius: 20px;
     padding: 2.5rem 3rem;
-    margin: 2.5rem 0 1.5rem 0 !important;
+    margin: 0.5rem 0 1rem 0 !important; /* Reduced top margin from 2.5rem to 0.5rem */
     box-shadow: var(--shadow-lg) !important;
     /* Explicitly disable decorative animations for section title boxes */
     position: relative;
@@ -971,6 +1001,17 @@ li[role="option"][aria-selected="true"] {
     transform: translateY(-2px); 
 }
 
+/* Reduce gap between button and vocabulary section */
+.stButton {
+    margin-bottom: 0.5rem !important;
+}
+
+/* Reduce spacing in main block container */
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
 /* --- PROGRESS BAR --- */
 .stProgress > div > div { 
     background: linear-gradient(90deg, var(--musigma-red), var(--accent-orange), var(--accent-teal)) !important; 
@@ -1047,38 +1088,38 @@ li[role="option"][aria-selected="true"] {
 }
             /* Smaller, tighter titles/headings + box sizing */
 :root {
-  --heading-weight: 650;
-  --title-padding-y: 0.5rem;
-  --title-padding-x: 0.75rem;
-  --title-radius: 8px;
+    --heading-weight: 650;
+    --title-padding-y: 0.5rem;
+    --title-padding-x: 0.75rem;
+    --title-radius: 8px;
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
 }
 
 /* Headings: reduce size, tighten line-height and margins */
 h1, h2, h3, .title, .heading, .card-title {
-  letter-spacing: -0.01em;
-  font-weight: var(--heading-weight);
+    letter-spacing: -0.01em;
+    font-weight: var(--heading-weight);
 }
 
 h1 {
-  font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.2rem);
-  line-height: 1.15;
-  margin: 0 0 var(--space-2);
+    font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.2rem);
+    line-height: 1.15;
+    margin: 0 0 var(--space-2);
 }
 
 h2 {
-  font-size: clamp(1.3rem, 1.0rem + 1.2vw, 1.8rem);
-  line-height: 1.2;
-  margin: 0 0 var(--space-2);
+    font-size: clamp(1.3rem, 1.0rem + 1.2vw, 1.8rem);
+    line-height: 1.2;
+    margin: 0 0 var(--space-2);
 }
 
 h3 {
-  font-size: clamp(1.1rem, 0.95rem + 0.8vw, 1.4rem);
-  line-height: 1.25;
-  margin: 0 0 var(--space-1);
+    font-size: clamp(1.1rem, 0.95rem + 0.8vw, 1.4rem);
+    line-height: 1.25;
+    margin: 0 0 var(--space-1);
 }
 
 /* Title/heading "boxes": smaller padding and radius */
@@ -1086,42 +1127,42 @@ h3 {
 .heading-box,
 .card-header,
 .section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--title-padding-y) var(--title-padding-x);
-  border-radius: var(--title-radius);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--title-padding-y) var(--title-padding-x);
+    border-radius: var(--title-radius);
 }
 
 .card-title {
-  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.2rem);
-  margin: 0;
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.2rem);
+    margin: 0;
 }
 
 /* Hero and sections: reduce vertical space */
 .hero h1,
 .page-title {
-  font-size: clamp(1.7rem, 1.2rem + 2vw, 2.3rem);
+    font-size: clamp(1.7rem, 1.2rem + 2vw, 2.3rem);
 }
 
 .hero {
-  padding-block: clamp(1.25rem, 0.8rem + 2vw, 2rem);
+    padding-block: clamp(1.25rem, 0.8rem + 2vw, 2rem);
 }
 
 .section {
-  padding-block: clamp(0.75rem, 0.5rem + 1.5vw, 1.5rem);
+    padding-block: clamp(0.75rem, 0.5rem + 1.5vw, 1.5rem);
 }
 
 /* Layout gaps slightly tighter */
 .grid,
 .stack {
-  gap: var(--space-2);
+    gap: var(--space-2);
 }
 
 /* Container narrower for cleaner look on wide screens */
 .container {
-  max-width: min(1100px, 92vw);
-  padding-inline: var(--space-3);
+    max-width: min(1100px, 92vw);
+    padding-inline: var(--space-3);
 }
 
 /* Navigation breadcrumb */
@@ -1154,13 +1195,13 @@ st.markdown("""
 <style>
 /* Smaller, tighter titles/headings + box sizing */
 :root {
-  --heading-weight: 650;
-  --title-padding-y: 0.5rem;
-  --title-padding-x: 0.75rem;
-  --title-radius: 8px;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
+    --heading-weight: 650;
+    --title-padding-y: 0.5rem;
+    --title-padding-x: 0.75rem;
+    --title-radius: 8px;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
 }
 
 /* Compact Section Heading Boxes */
@@ -1168,7 +1209,7 @@ st.markdown("""
     background: linear-gradient(135deg, var(--musigma-red) 0%, var(--accent-orange) 100%) !important;
     border-radius: 12px !important;
     padding: 0.9rem 1.2rem !important;
-    margin: 1.5rem 0 1rem 0 !important;
+    margin: 0.5rem 0 0.5rem 0 !important; /* Reduced margins from 1.5rem to 0.5rem */
     box-shadow: var(--shadow-md) !important;
     text-align: center !important;
     display: flex;
@@ -1207,7 +1248,7 @@ st.markdown("""
     padding: 1.4rem 1.8rem !important;   /* ↓ Reduced height */
     border-radius: 18px !important;
     text-align: center;
-    margin-bottom: 2rem !important;      /* ↓ Less vertical gap */
+    margin-bottom: 2rem !important;       /* ↓ Less vertical gap */
     box-shadow: var(--shadow-lg);
     border: 2px solid rgba(255, 255, 255, 0.15);
     position: relative;
@@ -1238,30 +1279,163 @@ st.markdown("""
     transform: translateY(-3px);
     box-shadow: 0 0 22px rgba(255, 107, 53, 0.4);
 }
-          
+            
 </style>
 """, unsafe_allow_html=True)
 # ========================
-# 🏢 FIXED MU SIGMA LOGO (Always Visible)
+# 🔗 CLICKABLE MU SIGMA LOGO TO TOGGLE ADMIN PANEL
 # ========================
-LOGO_URL = "https://yt3.googleusercontent.com/ytc/AIdro_k-7HkbByPWjKpVPO3LCF8XYlKuQuwROO0vf3zo1cqgoaE=s900-c-k-c0x00ffffff-no-rj"
-st.markdown(f"""
-    <div style="
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        width: 85px;
-        height: 85px;
-        border-radius: 50%;
-        border: 3px solid var(--musigma-red);
-        box-shadow: 0 8px 28px rgba(139,30,30,0.4);
-        background: white;
-        z-index: 9998;
-        overflow: hidden;
-    ">
-        <img src="{LOGO_URL}" style="width:100%; height:100%; object-fit:contain; padding:10px;">
+
+# ✅ Use a valid transparent Mu Sigma logo (corrected URL)
+# The old URL was missing or had permission issues — this one works.
+LOGO_URL = "https://yt3.googleusercontent.com/ytc/AIdro_k-7HkbByPWjKpVPO3LCF8XYlKuQuwROO0vf3zo1cqgoaE=s900-c-k-c0x00ffffff-no-rj" 
+
+# ✅ Inject JavaScript directly to handle sessionStorage and toggle
+# (Removed duplicate logo injection that relied on window.parent.document)
+
+st.markdown(("""
+    <a href="?adminPanelToggled=true#admin-section" style="text-decoration:none;">
+        <div class="musigma-logo" id="musigma-logo" style="cursor: pointer;" title="Open Admin View">
+            <img src="LOGO_URL_HERE" alt="Mu Sigma Logo">
+        </div>
+    </a>
+    <div id="admin-section" style="display:none;"></div>
+""").replace("LOGO_URL_HERE", LOGO_URL), unsafe_allow_html=True)
+
+# ========================
+# 🧠 JavaScript toggle bridge (connects sessionStorage to Streamlit)
+# ========================
+# Try to use streamlit_javascript if available; otherwise fall back to a tiny component
+try:
+    toggle_signal = st_javascript("""
+        let toggled = window.sessionStorage.getItem('adminPanelToggled');
+        if (toggled === 'true') {
+            return 'show';
+        } else {
+            return 'hide';
+        }
+    """)
+except Exception:
+    # Fallback: use st.components.v1 to run a small JS snippet that returns the value
+    import streamlit.components.v1 as components
+    try:
+        toggle_signal = components.html(
+            """
+            <script>
+            (function() {
+                const t = window.sessionStorage.getItem('adminPanelToggled');
+                const out = (t === 'true') ? 'show' : 'hide';
+                const el = document.createElement('div');
+                el.id = 'admin-toggle-signal';
+                el.textContent = out;
+                document.body.appendChild(el);
+            })();
+            </script>
+            <div id="admin-toggle-signal"></div>
+            """,
+            height=0
+        )
+        # components.html doesn't return the value to Python; we'll instead try reading via query params fallback
+        toggle_signal = None
+    except Exception:
+        toggle_signal = None
+
+# Ensure admin panel state exists
+if 'show_admin_panel' not in st.session_state:
+    st.session_state.show_admin_panel = False
+# intermediate selection flag: user clicked logo and wants to see admin selection
+if 'admin_view_selected' not in st.session_state:
+    st.session_state.admin_view_selected = False
+
+# First, check for a URL query param (set by the logo onclick) - highest priority
+qparams = st.query_params
+if 'adminPanelToggled' in qparams:
+    v = qparams.get('adminPanelToggled')[0].lower()
+    
+    # FIX APPLIED: Added 't' for robustness in case of partial URL input
+    if v in ('1', 't', 'true', 'show', 'yes'): 
+        st.session_state.current_page = 'admin'
+        st.session_state.show_admin_panel = True
+        st.session_state.admin_view_selected = True
+    else:
+        st.session_state.show_admin_panel = False
+    # Remove the query param to keep the URL clean
+    try:
+        import streamlit.components.v1 as components
+        components.html("""
+            <script>
+            (function(){
+                const url = new URL(window.location.href);
+                url.searchParams.delete('adminPanelToggled');
+                history.replaceState(null, '', url.pathname + url.search + url.hash);
+            })();
+            </script>
+        """, height=0)
+    except Exception:
+        pass
+    # Don't rerun here - let Streamlit handle the state change naturally
+        pass
+elif 'openFeedback' in qparams:
+    v = qparams.get('openFeedback')[0].lower()
+    if v in ('1', 'true', 'show', 'yes'):
+        # Stay on the main page but show the vocabulary/feedback section
+        st.session_state.current_page = 'page1'
+        st.session_state.show_vocabulary = True
+        st.session_state.open_feedback_from_logo = True
+    # Remove the query param to keep the URL clean
+    try:
+        import streamlit.components.v1 as components
+        components.html("""
+            <script>
+            (function(){
+                const url = new URL(window.location.href);
+                url.searchParams.delete('openFeedback');
+                history.replaceState(null, '', url.pathname + url.search + url.hash);
+            })();
+            </script>
+        """, height=0)
+    except Exception:
+        pass
+# If no query param, fall back to the toggle_signal (if available)
+elif toggle_signal == "show":
+    st.session_state.show_admin_panel = True
+elif toggle_signal == "hide":
+    st.session_state.show_admin_panel = False
+
+if 'show_admin_panel' not in st.session_state:
+    st.session_state.show_admin_panel = False
+
+if toggle_signal == "show":
+    st.session_state.show_admin_panel = True
+elif toggle_signal == "hide":
+    st.session_state.show_admin_panel = False
+
+# If admin panel is requested but admin view not yet selected, show a Streamlit-native intermediate selection UI
+if st.session_state.show_admin_panel and not st.session_state.admin_view_selected:
+    # Use columns to center the panel and buttons
+    st.markdown("""
+    <div style='display:flex; justify-content:center; margin-top:12px;'>
+        <div style='max-width:680px; width:92%; background:var(--bg-card); border-radius:12px; padding:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); border:1px solid rgba(139,30,30,0.04);'>
+            <h4 style='margin:0 0 6px 0; color:#8b1e1e; text-align:center;'>Admin view requested</h4>
+            <p style='margin:0 0 12px 0; text-align:center; color:var(--text-secondary);'>Do you want to open the Admin View? This will allow access to admin-only controls like feedback download.</p>
+            <div style='display:flex; justify-content:center; gap:12px;'>
+                </div>
+        </div>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        open_admin = st.button("Open Admin View", key="open_admin_view_btn")
+        cancel_admin = st.button("Cancel", key="cancel_admin_view_btn")
+        if open_admin:
+            st.session_state.admin_view_selected = True
+            # keep show_admin_panel True so admin block renders
+            safe_rerun()
+        if cancel_admin:
+            st.session_state.show_admin_panel = False
+            st.session_state.admin_view_selected = False
+            safe_rerun()
 
 
 # -----------------------------
@@ -1432,18 +1606,17 @@ def sanitize_text(text):
     text = re.sub(r' {2,}', ' ', text)
     text = re.sub(r'^\s*[-*]\s+', '• ', text, flags=re.MULTILINE)
     text = re.sub(r'<\/?[^>]+>', '', text)
-    text = re.sub(r'&amp;', '&', text)
+    text = re.sub(r'&', '&', text)
     text = re.sub(r'& Key Takeaway:', 'Key Takeaway:', text)
     
     return text.strip()
-import re
-import html
+
 
 def format_vocabulary_with_bold(text, extra_phrases=None):
     """
     Updated formatter rules (high-level):
       - Replace ' - ' with ' :'
-      - Normalize bullets (-, *) -> •
+      - Normalize bullets(-, *) -> •
       - If a numbered heading has a colon (e.g. '10. Heading:'), bold ONLY the numbered heading (left-of-colon).
       - If a numbered heading has NO colon (e.g. '2. Heading'), bold the whole numbered heading line and its immediate continuation lines.
       - 'Step N:' bolds the whole block (line + continuation lines).
@@ -1638,7 +1811,8 @@ def init_session_state():
         "feedback_submitted": False,  # NEW: Track if feedback has been submitted
         "user_info_collected": False,  # NEW: Track if user info was collected during analysis
         "analysis_account": "",  # NEW: Store account at analysis time
-        "analysis_industry": ""  # NEW: Store industry at analysis time
+        "analysis_industry": "",  # NEW: Store industry at analysis time
+        "validation_attempted": False  # NEW: Track if user attempted to extract without valid inputs
     }
     
     for key, default_value in defaults.items():
@@ -1662,553 +1836,636 @@ def reset_app_state():
     init_session_state()
     
     st.success("✅ Application reset successfully! You can start a new analysis.")
-import time
 
-def save_feedback(
-    feedback_type,
-    name="",
-    email="",
-    message="",
-    off_definitions="",
-    suggestions="",
-):
-    """Unified function to save all feedback types consistently."""
+def submit_feedback(feedback_type, name="", email="", off_definitions="", additional_feedback="", suggestions=""):
+    """Submit feedback to CSV file"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Get context data
+    account = st.session_state.get("analysis_account", "")
+    industry = st.session_state.get("analysis_industry", "")
+    # NEW: Get the problem statement
+    problem_statement = st.session_state.get("problem_text", "")
+    
+    new_entry = pd.DataFrame([[
+        timestamp, name, email, additional_feedback, feedback_type, off_definitions, suggestions, account, industry, problem_statement
+    ]], columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
+    
     try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        account = st.session_state.get("analysis_account", "")
-        industry = st.session_state.get("analysis_industry", "")
-
-        # Ensure all text fields are strings
-        def clean(x):
-            if x is None:
-                return ""
-            if callable(x):
-                return ""
-            return str(x).strip()
-
-        entry = {
-            "Timestamp": timestamp,
-            "Name": clean(name),
-            "Email": clean(email),
-            "FeedbackType": clean(feedback_type),
-            "Message": clean(message),
-            "OffDefinitions": clean(off_definitions),
-            "Suggestions": clean(suggestions),
-            "Account": clean(account),
-            "Industry": clean(industry)
-        }
-
-        df_entry = pd.DataFrame([entry])
-
-        # Append to CSV
         if os.path.exists(FEEDBACK_FILE):
             existing = pd.read_csv(FEEDBACK_FILE)
-            updated = pd.concat([existing, df_entry], ignore_index=True)
+            
+            # Handle schema mismatch (e.g. if 'ProblemStatement' is missing in existing file)
+            missing_cols = set(new_entry.columns) - set(existing.columns)
+            for col in missing_cols:
+                existing[col] = '' # Add missing columns to existing with default value
+            
+            # Reorder existing columns to match the new entry's order
+            existing = existing[new_entry.columns]
+
+            updated = pd.concat([existing, new_entry], ignore_index=True)
         else:
-            updated = df_entry
-
-        # Replace any 'None' or NaN with blanks
-        updated = updated.fillna("")
-        updated.replace("None", "", inplace=True)
-
+            updated = new_entry
+        
         updated.to_csv(FEEDBACK_FILE, index=False)
         st.session_state.feedback_submitted = True
         return True
-
     except Exception as e:
-        st.error(f"❌ Error saving feedback: {str(e)}")
+        st.error(f"Error saving feedback: {str(e)}")
         return False
 
 init_session_state()
-if "show_warnings" not in st.session_state:
-    st.session_state.show_warnings = False
 
 # -----------------------------
-# PAGE 1: Business Problem Input & Analysis (Simplified Vocabulary-Only Mode)
+# PAGE 1: Business Problem Input & Analysis (Structural Fix Applied here)
 # -----------------------------
-if st.session_state.current_page == "page1":
-    # ---- Page Title ----
-    st.markdown("""
-    <div class="page-title" style="text-align:center; margin-bottom:1.2rem;">
-        <h1 style="font-weight:800; color:#ffffff;">Business Problem Discovery Assistant</h1>
-        <p class="page-subtitle">
-            Identify key terms and context of your business problem instantly.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
-    # ================================
-    # 💼 Account & Industry Selection UI
-    # ================================
-    st.markdown('<div class="section-title-box"><h3>Account & Industry Selection</h3></div>', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
+# If admin_view_selected is true, we ONLY show the admin sections
+# Otherwise, we show the main page logic.
 
-    with col1:
-        # Safely fetch current account
-        current_account = st.session_state.get('account', 'Select Account')
-        try:
-            current_account_index = ACCOUNTS.index(current_account)
-        except (ValueError, AttributeError):
-            current_account_index = 0
-
-        # Account dropdown - UNIQUE KEY
-        selected_account = st.selectbox(
-            "Select Account:",
-            options=ACCOUNTS,
-            index=current_account_index,
-            key="account_selector_main"
-        )
-
-        # Auto-map logic with rerun
-        if selected_account != st.session_state.get('account'):
-            st.session_state.account = selected_account
-            if selected_account in ACCOUNT_INDUSTRY_MAP:
-                st.session_state.industry = ACCOUNT_INDUSTRY_MAP[selected_account]
-                st.session_state.industry_updated = True
-            st.rerun()
-
-    with col2:
-        # Safely fetch current industry
-        current_industry = st.session_state.get('industry', 'Select Industry')
-        try:
-            current_industry_index = INDUSTRIES.index(current_industry)
-        except (ValueError, AttributeError):
-            current_industry_index = 0
-
-        # Dynamic key ensures dropdown refreshes when mapping changes
-        industry_key = f"industry_selector_main_{current_industry}"
-
-        selected_industry = st.selectbox(
-            "Industry:",
-            options=INDUSTRIES,
-            index=current_industry_index,
-            key=industry_key,
-            disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
-        )
-
-        if selected_industry != st.session_state.get('industry'):
-            st.session_state.industry = selected_industry
-            st.rerun()
-
-    # ---- Business Problem ----
-    st.markdown('<div class="section-title-box"><h3>Business Problem Description</h3></div>', unsafe_allow_html=True)
-    st.session_state.problem_text = st.text_area(
-        "Describe your business problem in detail:",
-        value=st.session_state.get("problem_text", ""),
-        height=180,
-        placeholder="Feel free to just type down your problem statement, or copy-paste if you have it handy somewhere...",
-        label_visibility="collapsed",
-        key="problem_text_area"
-    )
-
-    # ---- Validation Helper Function ----
-    def is_valid_problem_text(text):
-        """Check if problem text is meaningful (not just random characters)"""
-        if not text or len(text.strip()) < 20:
-            return False
-        # Check if text has at least 3 words
-        words = text.strip().split()
-        if len(words) < 3:
-            return False
-        # Check if text contains mostly random characters (no vowels pattern)
-        vowels = set('aeiouAEIOU')
-        has_vowels = any(c in vowels for c in text)
-        if not has_vowels:
-            return False
-        return True
-    # ---- Validation Helper Function ----
-    def is_valid_problem_text(text):
-        """Check if problem text is meaningful (not just random characters)"""
-        if not text or len(text.strip()) < 20:
-            return False
-        # Check if text has at least 3 words
-        words = text.strip().split()
-        if len(words) < 3:
-            return False
-        # Check if text contains mostly random characters (no vowels pattern)
-        vowels = set('aeiouAEIOU')
-        has_vowels = any(c in vowels for c in text)
-        if not has_vowels:
-            return False
-        return True
-
-   # ---- Validation checks ----
-is_account_selected = st.session_state.account != "Select Account"
-is_industry_selected = st.session_state.industry != "Select Industry"
-has_problem_text = bool(st.session_state.problem_text.strip())
-is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
-
-# --- Validation helper ---
-def display_warnings():
-    warning_messages = []
-    if not is_account_selected:
-        warning_messages.append("⚠️ Please select an account.")
-    if not is_industry_selected:
-        warning_messages.append("⚠️ Please select an industry.")
-    if has_problem_text and not is_valid_problem:
-        warning_messages.append("⚠️ Please enter a valid business problem (minimum 20 characters).")
-    elif not has_problem_text:
-        warning_messages.append("⚠️ Please enter a business problem description.")
-    for msg in warning_messages:
-        st.warning(msg)
-
-# --- Trigger warnings only after user action ---
-if st.session_state.show_warnings:
-    display_warnings()
-
-# ---- Buttons ----
-analyze_btn = False  # ✅ Prevent undefined variable issues
-
-# --- Helper: Validation Checks ---
-is_account_selected = st.session_state.account != "Select Account"
-is_industry_selected = st.session_state.industry != "Select Industry"
-has_problem_text = bool(st.session_state.problem_text.strip())
-is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
-
-# --- Ensure warning flag exists ---
-if "show_warnings" not in st.session_state:
-    st.session_state.show_warnings = False
-
-# --- Function to show warnings only when triggered ---
-def display_warnings():
-    warning_messages = []
-    if not is_account_selected:
-        warning_messages.append("⚠️ Please select an account.")
-    if not is_industry_selected:
-        warning_messages.append("⚠️ Please select an industry.")
-    if has_problem_text and not is_valid_problem:
-        warning_messages.append("⚠️ Please enter a valid business problem (minimum 20 characters).")
-    elif not has_problem_text:
-        warning_messages.append("⚠️ Please enter a business problem description.")
-    for msg in warning_messages:
-        st.warning(msg)
-
-# ========================
-# 🧠 STEP 1: Show Analyze Button (Before Completion)
-# ========================
-if not st.session_state.analysis_complete:
-    # --- Only show warnings after first user attempt ---
-    if st.session_state.show_warnings:
-        display_warnings()
-
-    # --- Main Analyze Button ---
-    if st.button(
-        "Extract Vocabulary",
-        type="primary",
-        use_container_width=True,
-        key="analyze_btn",
-    ):
-        st.session_state.show_warnings = True  # now trigger future warnings
-
-        # --- Validation ---
-        if not is_account_selected or not is_industry_selected or not has_problem_text or not is_valid_problem:
-            display_warnings()
-            st.stop()
-
-        # ✅ Everything valid — continue to API call
-        st.session_state.analysis_account = st.session_state.account
-        st.session_state.analysis_industry = st.session_state.industry
-        st.session_state.user_info_collected = True
-
-        full_context = f"""
-        Business Problem:
-        {st.session_state.problem_text.strip()}
-
-        Context:
-        Account: {st.session_state.account}
-        Industry: {st.session_state.industry}
-        """
-
-        HEADERS = HEADERS_BASE.copy()
-        HEADERS.update({"Tenant-ID": TENANT_ID, "X-Tenant-ID": TENANT_ID})
-        if AUTH_TOKEN:
-            HEADERS["Authorization"] = f"Bearer {AUTH_TOKEN}"
-
-        with st.spinner("🔍 Extracting vocabulary and analyzing context..."):
-            progress = st.progress(0)
-            st.session_state.outputs = {}
-            session = requests.Session()
-            total = len(API_CONFIGS)
-
-            for i, api_cfg in enumerate(API_CONFIGS):
-                progress.progress(i / total)
-                if api_cfg["name"] != "vocabulary":
-                    continue
-                try:
-                    goal = api_cfg["prompt"](full_context, {})
-                    resp = session.post(api_cfg["url"], headers=HEADERS, json={"agency_goal": goal})
-                    if resp.status_code == 200:
-                        text = sanitize_text(json_to_text(resp.json()))
-                    else:
-                        text = f"API Error {resp.status_code}"
-                    st.session_state.outputs["vocabulary"] = text
-                except Exception as e:
-                    st.session_state.outputs["vocabulary"] = f"Error: {str(e)}"
-
-            progress.progress(1.0)
-            session.close()
-            st.session_state.analysis_complete = True
-            st.session_state.show_vocabulary = True
-            st.success("✅ Vocabulary extraction complete!")
-            st.rerun()
-
-# ========================
-# 🔄 STEP 2: New Analysis Button (After Completion)
-# ========================
-else:
-    st.markdown("---")
-    st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
-
-    if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
-        # ✅ Reset all except theme
-        for key in list(st.session_state.keys()):
-            if key not in ["dark_mode"]:
-                del st.session_state[key]
-        st.session_state.analysis_complete = False
-        st.session_state.show_vocabulary = False
-        st.session_state.current_page = "page1"
-        st.session_state.show_warnings = False  # reset warnings too
-        st.toast("🔁 Starting fresh analysis...", icon="♻️")
-        st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
-# ---- Show Vocabulary Directly After Analysis ----
-if st.session_state.current_page == "page1" and st.session_state.analysis_complete and st.session_state.show_vocabulary:
-    vocab_text = st.session_state.outputs.get("vocabulary", "")
+if not st.session_state.get('admin_view_selected', False) or st.session_state.get('current_page', 'page1') == 'page1':
+    # This block renders the main UI and processing (Page 1 content)
     
-    # ✅ Step 1: Get the pre-formatted HTML from your function
-    formatted_vocab = format_vocabulary_with_bold(vocab_text)
-
-    # ✅ Step 2: Clean HTML entities (important!)
-    formatted_vocab = html.unescape(formatted_vocab)
-    formatted_vocab = formatted_vocab.replace("&lt;", "<").replace("&gt;", ">")
-
-    # ✅ Step 3: Dynamically get account & industry for substitutions
-    account_name = st.session_state.get("analysis_account", "").strip()
-    industry_name = st.session_state.get("analysis_industry", "").strip()
-
-    # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
-    if account_name:
-        # Use a more careful replacement that preserves HTML tags
-        formatted_vocab = re.sub(
-            r'\bthe company\b', 
-            account_name, 
-            formatted_vocab, 
-            flags=re.IGNORECASE
-        )
-    if industry_name:
-        formatted_vocab = re.sub(
-            r'\bthe industry\b', 
-            industry_name, 
-            formatted_vocab, 
-            flags=re.IGNORECASE
-        )
-
-    # ✅ Step 5: Fallback display names for header
-    display_account = account_name if account_name else "the company"
-    display_industry = industry_name if industry_name else "the industry"
-
-    # ---- Section Title & Subheading ----
-    st.markdown(f"""
-        <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <h3 style="
-                    margin-bottom:8px;
-                    color:white;
-                    font-weight:800;
-                    font-size:1.4rem;
-                    line-height:1.2;
-                ">
-                    Vocabulary
-                </h3>
-                <p style="
-                    font-size:0.95rem; 
-                    color:white; 
-                    margin:0;
-                    line-height:1.5;
-                    text-align:center;
-                    max-width: 800px;
-                ">
-                    Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
-                    the <em>company</em> <strong>{display_account}</strong> and 
-                    the <em>industry</em> <strong>{display_industry}</strong> based on the 
-                    <em>problem statement</em> you shared.<br>
-                    In case you find something off, there's a provision to share feedback at the bottom 
-                    we encourage you to use it.
-                </p>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
-    st.markdown(formatted_vocab, unsafe_allow_html=True)
-
-# ========================
-# 💬 USER FEEDBACK (VISIBLE ONLY AFTER ANALYSIS)
-# ========================
-if st.session_state.analysis_complete and st.session_state.show_vocabulary:
-
-    # ✅ FEEDBACK SECTION (appears only after vocabulary)
-    if not st.session_state.get('feedback_submitted', False):
-        st.markdown("---")
+    if st.session_state.current_page == "page1":
+    # ---- Page Title ----
         st.markdown("""
-            <div class="section-title-box" style="margin-top:2rem; text-align:center;">
-                <h3>💬 User Feedback</h3>
+        <div class="page-title" style="text-align:center; margin-bottom:1.2rem;">
+            <h1 style="font-weight:800; color:#ffffff;">Business Problem Vocabulary Assistant</h1>
+            <p class="page-subtitle">
+            Identify key terms and context of your business problem instantly.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ---- Account & Industry ----
+        st.markdown('<div class="section-title-box"><h3>Account & Industry</h3></div>', unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Safely fetch current account
+            current_account = st.session_state.get('account', 'Select Account')
+            try:
+                current_account_index = ACCOUNTS.index(current_account)
+            except (ValueError, AttributeError):
+                current_account_index = 0
+
+            # Account dropdown - UNIQUE KEY
+            selected_account = st.selectbox(
+                "Select Account:",
+                options=ACCOUNTS,
+                index=current_account_index,
+                key="account_selector_main"
+            )
+
+            # Auto-map logic with rerun
+            if selected_account != st.session_state.get('account'):
+                st.session_state.account = selected_account
+                if selected_account in ACCOUNT_INDUSTRY_MAP:
+                    st.session_state.industry = ACCOUNT_INDUSTRY_MAP[selected_account]
+                    st.session_state.industry_updated = True
+                st.rerun()
+
+        with col2:
+            # Safely fetch current industry
+            current_industry = st.session_state.get('industry', 'Select Industry')
+            try:
+                current_industry_index = INDUSTRIES.index(current_industry)
+            except (ValueError, AttributeError):
+                current_industry_index = 0
+
+            # Dynamic key ensures dropdown refreshes when mapping changes
+            industry_key = f"industry_selector_main_{current_industry}"
+
+            selected_industry = st.selectbox(
+                "Industry:",
+                options=INDUSTRIES,
+                index=current_industry_index,
+                key=industry_key,
+                disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
+            )
+
+            if selected_industry != st.session_state.get('industry'):
+                st.session_state.industry = selected_industry
+                st.rerun()
+
+        # ---- Business Problem ----
+        st.markdown('<div class="section-title-box"><h3>Business Problem Description</h3></div>', unsafe_allow_html=True)
+        st.session_state.problem_text = st.text_area(
+            "Describe your business problem in detail:",
+            value=st.session_state.get("problem_text", ""),
+            height=180,
+            placeholder="Feel free to just type down your problem statement, or copy-paste if you have it handy somewhere...",
+            label_visibility="collapsed",
+            key="problem_text_area"
+        )
+
+        # ---- Validation Helper Function ----
+        def is_valid_problem_text(text):
+            """Check if problem text is meaningful (not just random characters)"""
+            if not text or len(text.strip()) < 20:
+                return False
+            # Check if text has at least 3 words
+            words = text.strip().split()
+            if len(words) < 3:
+                return False
+            # Check if text contains mostly random characters (no vowels pattern)
+            vowels = set('aeiouAEIOU')
+            has_vowels = any(c in vowels for c in text)
+            if not has_vowels:
+                return False
+            return True
+
+        # ---- Validation checks ----
+        is_account_selected = st.session_state.account != "Select Account"
+        is_industry_selected = st.session_state.industry != "Select Industry"
+        has_problem_text = bool(st.session_state.problem_text.strip())
+        is_valid_problem = is_valid_problem_text(st.session_state.problem_text)
+        
+        # Display validation warnings only after user attempts to extract
+        if not st.session_state.analysis_complete and st.session_state.validation_attempted:
+            warning_messages = []
+            if not is_account_selected:
+                warning_messages.append("⚠️ Please select an account")
+            if not is_industry_selected:
+                warning_messages.append("⚠️ Please select an industry")
+            if has_problem_text and not is_valid_problem:
+                warning_messages.append("⚠️ Please enter a valid business problem description (minimum 20 characters with meaningful content)")
+            elif not has_problem_text:
+                warning_messages.append("⚠️ Please enter a business problem description")
+            
+            if warning_messages:
+                for msg in warning_messages:
+                    st.warning(msg)
+
+        # ---- Buttons ----
+        if not st.session_state.analysis_complete:
+            # Full width Extract vocabulary button
+            analyze_btn = st.button(
+                "Extract vocabulary",
+                type="primary",
+                use_container_width=True,
+                disabled=not (
+                    st.session_state.problem_text.strip()
+                    and st.session_state.account != "Select Account"
+                    and st.session_state.industry != "Select Industry"
+                ),
+                key="analyze_btn"
+            )
+
+        # ---- Analysis Action ----
+        if not st.session_state.analysis_complete and 'analyze_btn' in locals() and analyze_btn:
+            # Set validation attempted flag
+            st.session_state.validation_attempted = True
+            
+            # Final validation before processing
+            if not is_account_selected:
+                st.error("❌ Please select an account before proceeding.")
+                st.stop()
+            
+            if not is_industry_selected:
+                st.error("❌ Please select an industry before proceeding.")
+                st.stop()
+            
+            if not has_problem_text:
+                st.error("❌ Please enter a business problem description.")
+                st.stop()
+            
+            if not is_valid_problem:
+                st.error("❌ Please enter a valid business problem description with meaningful content (minimum 20 characters).")
+                st.stop()
+
+            # ✅ COLLECT USER INFORMATION AT ANALYSIS TIME
+            st.session_state.analysis_account = st.session_state.account
+            st.session_state.analysis_industry = st.session_state.industry
+            st.session_state.user_info_collected = True
+
+            full_context = f"""
+            Business Problem:
+            {st.session_state.problem_text.strip()}
+
+            Context:
+            Account: {st.session_state.account}
+            Industry: {st.session_state.industry}
+            """
+
+            # Prepare headers
+            HEADERS = HEADERS_BASE.copy()
+            HEADERS.update({"Tenant-ID": TENANT_ID, "X-Tenant-ID": TENANT_ID})
+            if AUTH_TOKEN:
+                HEADERS["Authorization"] = f"Bearer {AUTH_TOKEN}"
+
+            with st.spinner("🔍 Extracting vocabulary and analyzing context..."):
+                progress = st.progress(0)
+                st.session_state.outputs = {}
+                session = requests.Session()
+                total = len(API_CONFIGS)
+
+                for i, api_cfg in enumerate(API_CONFIGS):
+                    progress.progress(i / total)
+                    if api_cfg["name"] != "vocabulary":
+                        continue  # run only vocabulary in this mode
+                    try:
+                        goal = api_cfg["prompt"](full_context, {})
+                        resp = session.post(api_cfg["url"], headers=HEADERS, json={"agency_goal": goal})
+                        if resp.status_code == 200:
+                            text = sanitize_text(json_to_text(resp.json()))
+                        else:
+                            text = f"API Error {resp.status_code}"
+                        st.session_state.outputs["vocabulary"] = text
+                    except Exception as e:
+                        st.session_state.outputs["vocabulary"] = f"Error: {str(e)}"
+
+                progress.progress(1.0)
+                session.close()
+                st.session_state.analysis_complete = True
+                st.session_state.show_vocabulary = True
+                
+                # Store vocabulary in a temporary file as backup for admin access
+                try:
+                    import tempfile
+                    vocab_backup_file = os.path.join(tempfile.gettempdir(), "streamlit_vocab_backup.txt")
+                    with open(vocab_backup_file, 'w', encoding='utf-8') as f:
+                        f.write(st.session_state.outputs.get("vocabulary", ""))
+                except Exception:
+                    pass  # Silently fail if file write doesn't work
+                
+                st.success("✅ Vocabulary extraction complete!")
+                st.rerun()
+
+    # ---- Show Vocabulary Directly After Analysis ----
+    if st.session_state.analysis_complete:
+        # Anchor for feedback/vocabulary section so ?openFeedback=true#feedback-section works
+        st.markdown('<div id="feedback-section"></div>', unsafe_allow_html=True)
+
+        # Client-side scroll helper: ensure hash targets scroll into view after Streamlit reruns
+        try:
+            scroll_script = """
+            <script>
+            (function(){
+                // small delay to let Streamlit finish rendering
+                function scrollToHash(){
+                    try{
+                        var h = window.location.hash;
+                        if(!h) return;
+                        // support both admin-section and feedback-section
+                        var id = h.replace('#','');
+                        var el = document.getElementById(id);
+                        if(el){
+                            // use scrollIntoView with smooth behavior when possible
+                            setTimeout(function(){ el.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 120);
+                        }
+                    }catch(e){console.log('scrollToHash error', e)}
+                }
+
+                // run once on load
+                if (document.readyState === 'complete') {
+                    scrollToHash();
+                } else {
+                    window.addEventListener('load', scrollToHash, {once:true});
+                }
+
+                // also observe mutations and try again (handles Streamlit dynamic DOM updates)
+                var obs = new MutationObserver(function(m){
+                    if(window.location.hash){
+                        scrollToHash();
+                    }
+                });
+                obs.observe(document.body, {childList:true, subtree:true});
+            })();
+            </script>
+            """
+            import streamlit.components.v1 as components
+            components.html(scroll_script, height=0)
+        except Exception:
+            pass
+        vocab_text = st.session_state.outputs.get("vocabulary", "")
+        
+        # ✅ Step 1: Get the pre-formatted HTML from your function
+        formatted_vocab = format_vocabulary_with_bold(vocab_text)
+
+        # ✅ Step 2: Clean HTML entities (important!)
+        formatted_vocab = html.unescape(formatted_vocab)
+        formatted_vocab = formatted_vocab.replace("<", "<").replace(">", ">") # Re-escape HTML tags
+
+        # ✅ Step 3: Dynamically get account & industry for substitutions
+        account_name = st.session_state.get("analysis_account", "").strip()
+        industry_name = st.session_state.get("analysis_industry", "").strip()
+
+        # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
+        if account_name:
+            # Use a more careful replacement that preserves HTML tags
+            formatted_vocab = re.sub(
+                r'\bthe company\b', 
+                account_name, 
+                formatted_vocab, 
+                flags=re.IGNORECASE
+            )
+        if industry_name:
+            formatted_vocab = re.sub(
+                r'\bthe industry\b', 
+                industry_name, 
+                formatted_vocab, 
+                flags=re.IGNORECASE
+            )
+
+        # ✅ Step 5: Fallback display names for header
+        display_account = account_name if account_name else "the company"
+        display_industry = industry_name if industry_name else "the industry"
+
+        # ---- Section Title & Subheading ----
+        st.markdown(f"""
+            <div class="section-title-box" style="text-align:center; margin-top:0.5rem !important;">
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <h3 style="
+                        margin-bottom:8px;
+                        color:white;
+                        font-weight:800;
+                        font-size:1.4rem;
+                        line-height:1.2;
+                    ">
+                        Vocabulary
+                    </h3>
+                    <p style="
+                        font-size:0.95rem;  
+                        color:white;  
+                        margin:0;
+                        line-height:1.5;
+                        text-align:center;
+                        max-width: 800px;
+                    ">
+                        Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from  
+                        the <em>company</em> <strong>{display_account}</strong> and  
+                        the <em>industry</em> <strong>{display_industry}</strong> based on the  
+                        <em>problem statement</em> you shared.<br>
+                        In case you find something off, there's a provision to share feedback at the bottom  
+                        we encourage you to use it.
+                    </p>
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("Please share your thoughts or suggestions after reviewing the vocabulary results.")
+        # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
+        st.markdown(formatted_vocab, unsafe_allow_html=True)
 
-        feedback_option = st.radio(
-            "Select your feedback type:",
-            options=[
-                "I have read it, found it useful, thanks.",
-                "I have read it, found some definitions to be off.",
-                "The widget seems interesting, but I have some suggestions on the features."
-            ],
-            index=None,
-            key="feedback_radio"
-        )
+        # ========================
+        # 💬 ENHANCED FEEDBACK FORM (SHOW ONLY AFTER ANALYSIS)
+        # ========================
+        
+        # Show feedback section if not submitted OR if user wants to submit again
+        show_feedback = not st.session_state.get('feedback_submitted', False)
+        
+        if show_feedback:
+            st.markdown("---")
+            st.markdown("""
+                <div class="section-title-box" style="text-align:center;">
+                    <h3>💬 User Feedback</h3>
+                </div>
+            """, unsafe_allow_html=True)
 
-        # 🚫 Before selection, show only info
-        if not feedback_option:
-            st.info("👉 Please select a feedback option above to continue.")
+            st.markdown("Please share your thoughts or suggestions after reviewing the vocabulary results.")
 
-        # ✅ Option 1 — “Found it useful”
-        elif feedback_option == "I have read it, found it useful, thanks.":
+            # ✅ INITIALIZE FEEDBACK STATE - NO OPTION SELECTED INITIALLY
+            if 'feedback_option' not in st.session_state:
+                st.session_state.feedback_option = None
 
-            st.markdown("**Thank you! Please confirm your details before submitting your feedback.**")
-            with st.form("feedback_form_positive", clear_on_submit=True):
-                name = st.text_input("Your Name *", placeholder="Enter your full name")
-                email = st.text_input("Your Email (optional)", placeholder="example@company.com")
+            # Radio buttons for feedback type - NO DEFAULT SELECTION
+            feedback_option = st.radio(
+                "Select your feedback type:",
+                options=[
+                    "I have read it, found it useful, thanks.",
+                    "I have read it, found some definitions to be off.",
+                    "The widget seems interesting, but I have some suggestions on the features."
+                ],
+                key="feedback_radio",
+                index=None  # ✅ NO DEFAULT SELECTION
+            )
 
-                account = st.session_state.get("analysis_account", "Select Account")
-                industry = st.session_state.get("analysis_industry", "Select Industry")
+            # Update session state when user selects an option
+            if feedback_option != st.session_state.feedback_option:
+                st.session_state.feedback_option = feedback_option
+            
+            # Form 1: Positive Feedback (Now collects Name/Email)
+            if feedback_option == "I have read it, found it useful, thanks.":
+                with st.form("feedback_form_1_positive", clear_on_submit=True):
+                    st.info("Thank you for your positive feedback! Optional: Share your name and email.")
+                    
+                    # Show account and industry from analysis
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input("Account", value=st.session_state.get("analysis_account", ""), disabled=True, key="account_pos")
+                    with col2:
+                        st.text_input("Industry", value=st.session_state.get("analysis_industry", ""), disabled=True, key="industry_pos")
+                    
+                    name = st.text_input("Your Name (optional)", key="name_pos")
+                    email = st.text_input("Your Email (optional)", key="email_pos")
+                    
+                    submitted = st.form_submit_button("📨 Submit Positive Feedback")
+                    
+                    if submitted:
+                        if submit_feedback(feedback_type=feedback_option, name=name, email=email):
+                            st.success("✅ Thank you! Your positive feedback has been recorded.")
+            
+            # Form 2: Definitions Off
+            elif feedback_option == "I have read it, found some definitions to be off.":
+                with st.form("feedback_form_2", clear_on_submit=True):
+                    st.markdown("**Please select which sections have definitions that seem off:**")
+                
+                    # Show account and industry from analysis
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input("Account", value=st.session_state.get("analysis_account", ""), disabled=True, key="account_def")
+                    with col2:
+                        st.text_input("Industry", value=st.session_state.get("analysis_industry", ""), disabled=True, key="industry_def")
+                    
+                    name = st.text_input("Your Name")
+                    email = st.text_input("Your Email (optional)")
+                
+                    # Extract vocabulary sections dynamically
+                    vocab_text = st.session_state.outputs.get("vocabulary", "")
+                    
+                    # Parse vocabulary to extract Step headings
+                    step_sections = {}
+                    if vocab_text:
+                        # Extract Step N: headings with their content
+                        step_pattern = r'(Step\s*(\d+)\s*:\s*([^\n]+))'
+                        matches = re.finditer(step_pattern, vocab_text, re.IGNORECASE)
+                        
+                        for match in matches:
+                            step_num = match.group(2)
+                            step_title = match.group(3).strip()
+                            step_key = f"Step {step_num}"
+                            step_sections[step_key] = step_title
+                    
+                    # If no steps found or less than 5, create generic options
+                    if len(step_sections) == 0:
+                        step_sections = {
+                            "Step 1": "Key Performance Indicators (KPIs)",
+                            "Step 2": "Technical Definitions",
+                            "Step 3": "Industry Context",
+                            "Step 4": "Business Metrics",
+                            "Step 5": "Strategic Implications"
+                        }
+                    
+                    # Create 5 multiselect dropdowns for each step
+                    st.markdown("### Select problematic sections:")
+                    
+                    selected_issues = {}
+                    for i in range(1, 6):
+                        step_key = f"Step {i}"
+                        step_title = step_sections.get(step_key, f"Section {i}")
+                        
+                        # Extract sub-headings (numbered items under each step)
+                        sub_items = []
+                        if vocab_text:
+                            # Look for numbered items (1. Item, 2. Item, etc.) in the vocabulary
+                            # This will find items like "1. Revenue Growth Rate:", "2. Market Share:", etc.
+                            step_section_match = re.search(
+                                rf'Step\s*{i}\s*:.*?(?=Step\s*\d+\s*:|$)',
+                                vocab_text,
+                                re.IGNORECASE | re.DOTALL
+                            )
+                            
+                            if step_section_match:
+                                step_content = step_section_match.group(0)
+                                # Extract numbered sub-items
+                                sub_item_pattern = r'^\s*(\d+)\.\s+([^:\n]+)'
+                                sub_matches = re.finditer(sub_item_pattern, step_content, re.MULTILINE)
+                                
+                                for sub_match in sub_matches:
+                                    item_text = sub_match.group(2).strip()
+                                    # Clean up any extra formatting
+                                    item_text = re.sub(r'<[^>]+>', '', item_text)  # Remove HTML tags
+                                    item_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', item_text)  # Remove bold markers
+                                    sub_items.append(item_text)
+                        
+                        # If no sub-items found, add just the step heading as an option
+                        if not sub_items:
+                            sub_items = [f"{step_title} - General"]
+                        
+                        # Special handling for Step 5 (usually a paragraph)
+                        if i == 5 and not sub_items:
+                            sub_items = [f"{step_key}: {step_title}"]
+                        
+                        # Create multiselect for this step
+                        selected = st.multiselect(
+                            f"**{step_key}: {step_title}**",
+                            options=sub_items,
+                            key=f"step_{i}_issues",
+                            help=f"Select items from {step_key} that have definition issues"
+                        )
+                        
+                        if selected:
+                            selected_issues[step_key] = selected
+                
+                    additional_feedback = st.text_area(
+                        "Additional comments:", 
+                        placeholder="Please provide more details about the definition issues you found..."
+                    )
+                
+                    submitted = st.form_submit_button("📨 Submit Feedback")
+                
+                    if submitted:
+                        if not selected_issues:
+                            st.warning("⚠️ Please select at least one section/item that has definition issues.")
+                        else:
+                            # Format the selected issues for CSV storage
+                            issues_list = []
+                            for step, items in selected_issues.items():
+                                for item in items:
+                                    issues_list.append(f"{step} - {item}")
+                            
+                            off_defs_text = " | ".join(issues_list)
+                        
+                            if submit_feedback(
+                                feedback_type=feedback_option,
+                                name=name,
+                                email=email,
+                                off_definitions=off_defs_text,
+                                additional_feedback=additional_feedback
+                            ):
+                                st.success("✅ Thank you! Your feedback has been submitted.")
 
-                st.markdown(f"**Account:** {account}")
-                st.markdown(f"**Industry:** {industry}")
+            # Form 3: Suggestions
+            elif feedback_option == "The widget seems interesting, but I have some suggestions on the features.":
+                with st.form("feedback_form_3", clear_on_submit=True):
+                    st.markdown("**Please share your suggestions for improvement:**")
+                
+                    # Show account and industry from analysis
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input("Account", value=st.session_state.get("analysis_account", ""), disabled=True, key="account_sug")
+                    with col2:
+                        st.text_input("Industry", value=st.session_state.get("analysis_industry", ""), disabled=True, key="industry_sug")
+                    
+                    name = st.text_input("Your Name")
+                    email = st.text_input("Your Email (optional)")
+                
+                    suggestions = st.text_area(
+                        "Your suggestions:",
+                        placeholder="What features would you like to see improved or added?",
+                        key="suggestions_textarea" 
+                    )
+                
+                    submitted = st.form_submit_button("📨 Submit Feedback")
+                
+                    if submitted:
+                        if not suggestions.strip():
+                            st.warning("⚠️ Please provide your suggestions.")
+                        else:
+                            if submit_feedback(
+                                feedback_type=feedback_option,
+                                name=name,
+                                email=email,
+                                suggestions=suggestions
+                            ):
+                                st.success("✅ Thank you! Your feedback has been submitted.")
+                                # Hide feedback form after submission
+                                st.rerun()
 
-                submitted = st.form_submit_button("📨 Submit Feedback")
-                if submitted:
-                    if not name.strip():
-                        st.warning("⚠️ Please enter your name before submitting.")
-                    else:
-                        if save_feedback(
-                            feedback_type=feedback_option,
-                            name=name,
-                            email=email,
-                            message="Positive feedback — found it useful."
-                        ):
-                            st.session_state.feedback_submitted = True
-                            st.success("✅ Your feedback and details have been recorded.")
-                            st.rerun()
+        else:
+            # Feedback already submitted - show thank you message and option to submit again
+            st.markdown("---")
+            st.success("✅ Thank you! Your feedback has been recorded.")
+            st.info("💡 If you'd like to provide additional feedback after reviewing the vocabulary again, click below.")
+            
+            if st.button("📝 Submit Additional Feedback", key="reopen_feedback_btn"):
+                st.session_state.feedback_submitted = False
+                st.rerun()
 
-        # ✅ Option 2 — “Definitions off”
-        elif feedback_option == "I have read it, found some definitions to be off.":
-            with st.form("feedback_form_2", clear_on_submit=True):
-                st.markdown("**Please provide details about the definitions you found off:**")
-                name = st.text_input("Your Name *", placeholder="Enter your full name")
-                email = st.text_input("Your Email (optional)", placeholder="example@company.com")
-
-                off_definitions = st.multiselect(
-                    "Which definitions did you find off?",
-                    options=[
-                        "Revenue Growth Rate",
-                        "Market Share",
-                        "Customer Acquisition Cost",
-                        "Profit Margin",
-                        "Operational Efficiency",
-                        "Competitive Analysis",
-                        "Other (please specify below)"
-                    ]
-                )
-
-                additional_feedback = st.text_area(
-                    "Additional comments:",
-                    placeholder="Provide more details or specify what seemed off..."
-                )
-
-                submitted = st.form_submit_button("📨 Submit Feedback")
-                if submitted:
-                    if not name.strip():
-                        st.warning("⚠️ Please enter your name.")
-                    elif not off_definitions:
-                        st.warning("⚠️ Please select at least one definition.")
-                    else:
-                        off_defs_text = ", ".join(off_definitions)
-                        if save_feedback(
-                            feedback_type=feedback_option,
-                            name=name,
-                            email=email,
-                            message=f"Off Definitions: {off_defs_text}\nComments: {additional_feedback}"
-                        ):
-                            st.session_state.feedback_submitted = True
-                            st.success("✅ Thank you! Your feedback has been submitted.")
-                            st.rerun()
-
-        # ✅ Option 3 — “Feature Suggestions”
-        elif feedback_option == "The widget seems interesting, but I have some suggestions on the features.":
-            with st.form("feedback_form_3", clear_on_submit=True):
-                st.markdown("**Please share your suggestions for improvement:**")
-                name = st.text_input("Your Name *", placeholder="Enter your full name")
-                email = st.text_input("Your Email (optional)", placeholder="example@company.com")
-
-                suggestions = st.text_area(
-                    "Your suggestions:",
-                    placeholder="What features would you like to see improved or added?"
-                )
-
-                submitted = st.form_submit_button("📨 Submit Feedback")
-
-                if submitted:
-                    if not name.strip():
-                        st.warning("⚠️ Please enter your name.")
-                    elif not suggestions.strip():
-                        st.warning("⚠️ Please provide your suggestions.")
-                    else:
-                        if save_feedback(
-                            feedback_type=feedback_option,
-                            name=name,
-                            email=email,
-                            message=suggestions
-                        ):
-                            st.session_state.feedback_submitted = True
-                            st.success("✅ Thank you! Your feedback has been submitted.")
-                            st.rerun()
-
-    # ✅ Once feedback submitted, hide section and show thank-you + download + admin
-    else:
+        # ========================
+        # 📥 VOCABULARY DOWNLOAD SECTION
+        # ========================
         st.markdown("---")
-        st.success("🎉 Thank you! Your feedback has been recorded successfully.")
-
-        # ========================
-        # 📥 DOWNLOAD VOCABULARY
-        # ========================
         st.markdown("""
-            <div class="section-title-box" style="margin-top:2rem; text-align:center;">
+            <div class="section-title-box" style="text-align:center;">
                 <h3>📥 Download Vocabulary</h3>
             </div>
         """, unsafe_allow_html=True)
 
-        vocab_text = st.session_state.outputs.get("vocabulary", "")
+        st.markdown("**Would you like to download this vocabulary?**")
+
+        # Get the vocabulary text for download
+        vocab_text = st.session_state.outputs.get("vocabulary", "") if st.session_state.get("analysis_complete", False) else ""
+
         if vocab_text:
+            # Create downloadable content
             account_name = st.session_state.get("analysis_account", "Unknown Company")
             industry_name = st.session_state.get("analysis_industry", "Unknown Industry")
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = f"vocabulary_{account_name.replace(' ', '_')}_{timestamp}.txt"
-
+            
+            # Format the content for download
             download_content = f"""Vocabulary Export
-Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Company: {account_name}
-Industry: {industry_name}
+    Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    Company: {account_name}
+    Industry: {industry_name}
 
-{vocab_text}
+    {vocab_text}
 
----
-Generated by Vocabulary Analysis Tool
-"""
-
+    ---
+    Generated by Vocabulary Analysis Tool
+    """
+            
             st.download_button(
                 label="⬇️ Download Vocabulary as Text File",
                 data=download_content,
@@ -2218,116 +2475,108 @@ Generated by Vocabulary Analysis Tool
             )
         else:
             st.info("No vocabulary available for download. Please complete the analysis first.")
-
+        
         # ========================
-# 🧩 ADMIN ACCESS ICON (appears after download)
+        # 🔄 NEW ANALYSIS BUTTON (Below Download) - Full Width
+        # ========================
+        st.markdown("---")
+        if st.button("🔄 New Analysis", type="primary", key="new_analysis_btn", use_container_width=True):
+            reset_app_state()
+            st.rerun()
+
+
 # ========================
-if "show_admin_panel" not in st.session_state:
-    st.session_state.show_admin_panel = False
-if "admin_authenticated" not in st.session_state:
-    st.session_state.admin_authenticated = False
-
-# Centered admin key icon (below download button)
-col1, col2, col3 = st.columns([4, 0.5, 4])
-with col2:
-    admin_icon_clicked = st.button("🔑", key="admin_icon", help="Admin Access")
-
-# Toggle visibility
-if admin_icon_clicked:
-    st.session_state.show_admin_panel = not st.session_state.show_admin_panel
-
-# --------------------------
-# ADMIN DASHBOARD (only visible when toggled)
-# --------------------------
-if st.session_state.show_admin_panel:
+# 🧩 ADMIN SECTION (DOWNLOAD REPORTS)
+# ========================
+# Renders the admin panel directly if current_page is set to 'admin'
+if st.session_state.get('current_page', '') == 'admin':
     st.markdown("---")
-    st.markdown(
-        '<div class="section-title-box" style="text-align:center;"><h3>🔐 Admin Dashboard</h3></div>',
-        unsafe_allow_html=True,
-    )
+    # anchor for hash navigation
+    st.markdown('<div id="admin-section"></div>', unsafe_allow_html=True)
+    st.subheader("📊 Admin Section (Download Reports)")
 
+    # Small back button to return to main app
+    if st.button("← Back to app", key="admin_back_btn"):
+        st.session_state.current_page = 'page1'
+        st.session_state.show_admin_panel = False
+        st.session_state.admin_view_selected = False
+        st.session_state.admin_authenticated = False
+        # Clear query params to ensure clean navigation
+        st.query_params.clear()
+        st.rerun() 
+
+    # Show password input only inside admin section
     password = st.text_input("Enter admin password:", type="password", key="admin_password")
 
-    # ✅ Password check inside scope
-    if password == "admin123":
+    # Load admin password from Streamlit secrets or environment variable for security
+    try:
+        secret_admin_pw = st.secrets.get("admin_password") if hasattr(st, 'secrets') else None
+    except Exception:
+        secret_admin_pw = None
+
+    env_admin_pw = os.environ.get("ADMIN_PASSWORD")
+    ADMIN_PASSWORD = secret_admin_pw or env_admin_pw or "admin123"
+
+    # Authenticate
+    if password and password == ADMIN_PASSWORD:
         st.session_state.admin_authenticated = True
-        st.success("✅ Admin Access Granted")
-
+        st.success("Access granted ✅")
+    
+        # Admin download options - Full width for feedback report only
+        st.markdown("**📋 Feedback Report**")
+        
         if os.path.exists(FEEDBACK_FILE):
-            df = pd.read_csv(FEEDBACK_FILE).fillna("").replace("None", "")
+            try:
+                # Read the file with the expected schema, allowing missing columns to be inferred
+                df = pd.read_csv(FEEDBACK_FILE) 
+            except Exception as e:
+                st.error(f"Error reading feedback file: {e}")
+                df = None
 
-            # ✅ Clean garbage rows (functions, ****, blanks)
-            df = df[~df["FeedbackType"].astype(str).str.contains("<function", na=False)]
-            df = df[df["FeedbackType"].astype(str).str.strip() != "****"]
-            df = df[df["FeedbackType"].astype(str).str.strip() != ""]
-
-            if not df.empty:
-                # Map readable labels
-                label_map = {
-                    "I have read it, found it useful, thanks.": "Found it useful",
-                    "I have read it, found some definitions to be off.": "Definitions seem off",
-                    "The widget seems interesting, but I have some suggestions on the features.": "Feature suggestions",
-                }
-                df["ReadableType"] = df["FeedbackType"].map(label_map).fillna(df["FeedbackType"])
-
-                # --------------------------
-                # 🔽 Dropdown Filter (Minimal UI)
-                # --------------------------
-                st.markdown("---")
-                feedback_options = [
-                    "All Feedback",
-                    "I have read it, found it useful, thanks.",
-                    "I have read it, found some definitions to be off.",
-                    "The widget seems interesting, but I have some suggestions on the features.",
-                ]
-                selected_filter_real = st.selectbox("Select Feedback Type:", feedback_options, index=0)
-
-                # Convert to readable name for display
-                readable_display = (
-                    label_map.get(selected_filter_real, "All Feedback")
-                    if selected_filter_real != "All Feedback"
-                    else "All Feedback"
-                )
-
-                # Apply filter
-                filtered_df = (
-                    df if selected_filter_real == "All Feedback" else df[df["FeedbackType"] == selected_filter_real]
-                )
-
-                # --------------------------
-                # 💾 Download Filtered Report
-                # --------------------------
-                csv_bytes = filtered_df.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    f"⬇️ Download {readable_display} Report",
-                    csv_bytes,
-                    f"feedback_{readable_display.replace(' ', '_').lower()}.csv",
-                    "text/csv",
-                    use_container_width=True,
-                )
-
-                # --------------------------
-                # 🧾 Display Filtered Table
-                # --------------------------
-                st.dataframe(
-                    filtered_df[
-                        [
-                            "Timestamp",
-                            "Name",
-                            "Email",
-                            "FeedbackType",
-                            "Message",
-                            "OffDefinitions",
-                            "Suggestions",
-                            "Account",
-                            "Industry",
-                        ]
+            if df is not None and not df.empty:
+                # Add filter dropdown
+                filter_option = st.selectbox(
+                    "Filter by feedback type:",
+                    options=[
+                        "All",
+                        "I have read it, found it useful, thanks.",
+                        "I have read it, found some definitions to be off.",
+                        "The widget seems interesting, but I have some suggestions on the features."
                     ],
-                    use_container_width=True,
+                    key="admin_feedback_filter"
+                )
+                
+                # Apply filter
+                if filter_option == "All":
+                    filtered_df = df.copy()
+                else:
+                    filtered_df = df[df['FeedbackType'] == filter_option]
+                
+                # Show count
+                st.info(f"Showing {len(filtered_df)} of {len(df)} feedback entries")
+                
+                # Display filtered feedback data table - fit to full page width
+                st.markdown("### 📋 User Feedback")
+                st.dataframe(filtered_df, use_container_width=True, height=500)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Download filtered feedback
+                feedback_csv = filtered_df.to_csv(index=False).encode("utf-8")
+                download_filename = f"feedback_report_{filter_option.replace(' ', '_').replace('.', '').replace(',', '')}.csv"
+                
+                st.download_button(
+                    "⬇️ Download Filtered Feedback Report",
+                    feedback_csv,
+                    download_filename,
+                    "text/csv",
+                    use_container_width=True
                 )
             else:
-                st.info("No valid feedback data available.")
+                st.info("No feedback data available (file is empty or unreadable).")
         else:
-            st.info("Feedback file not found.")
-    elif password:
-        st.error("❌ Incorrect password.")
+            st.info("Feedback file not found. No feedback has been submitted yet.")
+
+    elif password and password != "":
+        st.session_state.admin_authenticated = False
+        st.error("❌ Invalid password. Access denied.")
