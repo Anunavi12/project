@@ -1754,11 +1754,11 @@ if st.session_state.current_page == "page1":
 
         # Account dropdown - UNIQUE KEY
         selected_account = st.selectbox(
-            "Select Account:",
-            options=ACCOUNTS,
-            index=current_account_index,
-            key="account_selector_main"
-        )
+        "Select Account:",
+         options=ACCOUNTS,
+         index=current_account_index,
+         key=f"account_selector_main_{st.session_state.get('reset_token', '')}"
+         )
 
         # Auto-map logic with rerun
         if selected_account != st.session_state.get('account'):
@@ -1780,12 +1780,13 @@ if st.session_state.current_page == "page1":
         industry_key = f"industry_selector_main_{current_industry}"
 
         selected_industry = st.selectbox(
-            "Industry:",
-            options=INDUSTRIES,
-            index=current_industry_index,
-            key=industry_key,
-            disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
+        "Industry:",
+        options=INDUSTRIES,
+        index=current_industry_index,
+        key=f"industry_selector_main_{st.session_state.get('reset_token', '')}",
+        disabled=(st.session_state.get('account', 'Select Account') == "Select Account")
         )
+
 
         if selected_industry != st.session_state.get('industry'):
             st.session_state.industry = selected_industry
@@ -1794,14 +1795,13 @@ if st.session_state.current_page == "page1":
     # ---- Business Problem ----
     st.markdown('<div class="section-title-box"><h3>Business Problem Description</h3></div>', unsafe_allow_html=True)
     st.session_state.problem_text = st.text_area(
-        "Describe your business problem in detail:",
-        value=st.session_state.get("problem_text", ""),
-        height=180,
-        placeholder="Feel free to just type down your problem statement, or copy-paste if you have it handy somewhere...",
-        label_visibility="collapsed",
-        key="problem_text_area"
+    "Describe your business problem in detail:",
+    value=st.session_state.get("problem_text", ""),
+    height=180,
+    placeholder="Feel free to just type down your problem statement, or copy-paste if you have it handy somewhere...",
+    label_visibility="collapsed",
+    key=f"problem_text_area_{st.session_state.get('reset_token', '')}"
     )
-
     # ---- Validation Helper Function ----
     def is_valid_problem_text(text):
         """Check if problem text is meaningful (not just random characters)"""
@@ -1960,17 +1960,18 @@ else:
     st.markdown("---")
     st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
 
-    if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
-        # ✅ Reset all except theme
-        for key in list(st.session_state.keys()):
-            if key not in ["dark_mode"]:
-                del st.session_state[key]
-        st.session_state.analysis_complete = False
-        st.session_state.show_vocabulary = False
-        st.session_state.current_page = "page1"
-        st.session_state.show_warnings = False  # reset warnings too
-        st.toast("🔁 Starting fresh analysis...", icon="♻️")
-        st.rerun()
+   if st.button("🔄 Start New Analysis", type="primary", use_container_width=True, key="new_analysis_btn"):
+    # Reset everything including selections and text
+    for key in list(st.session_state.keys()):
+        if key not in ["dark_mode"]:
+            del st.session_state[key]
+
+    # ✅ Add a reset token so widget keys refresh
+    st.session_state["reset_token"] = str(random.randint(1000, 9999))
+
+    st.toast("🔁 Starting fresh analysis...", icon="♻️")
+    st.rerun()
+
 
     st.markdown('</div>', unsafe_allow_html=True)
 # ---- Show Vocabulary Directly After Analysis ----
@@ -2331,3 +2332,4 @@ if st.session_state.show_admin_panel:
             st.info("Feedback file not found.")
     elif password:
         st.error("❌ Incorrect password.")
+
