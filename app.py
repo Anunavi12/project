@@ -2148,11 +2148,16 @@ if not st.session_state.get('admin_view_selected', False) or st.session_state.ge
         vocab_text = st.session_state.outputs.get("vocabulary", "")
         
         # ✅ Step 1: Get the pre-formatted HTML from your function
-        formatted_vocab = format_vocabulary_with_bold(vocab_text)
-
-        # ✅ Step 2: Clean HTML entities (important!)
-        formatted_vocab = html.unescape(formatted_vocab)
-        formatted_vocab = formatted_vocab.replace("<", "<").replace(">", ">") # Re-escape HTML tags
+        try:
+            formatted_vocab = format_vocabulary_with_bold(vocab_text)
+            
+            # ✅ Step 2: Clean HTML entities (important!)
+            formatted_vocab = html.unescape(formatted_vocab)
+            formatted_vocab = formatted_vocab.replace("<", "&lt;").replace(">", "&gt;") # Re-escape HTML tags
+        except Exception as e:
+            # If any error occurs in formatting, use plain text
+            st.warning(f"Vocabulary formatting issue, displaying as plain text.")
+            formatted_vocab = vocab_text
 
         # ✅ Step 3: Dynamically get account & industry for substitutions
         account_name = st.session_state.get("analysis_account", "").strip()
@@ -2587,4 +2592,3 @@ if st.session_state.get('current_page', '') == 'admin':
     elif password and password != "":
         st.session_state.admin_authenticated = False
         st.error("❌ Invalid password. Access denied.")
-
