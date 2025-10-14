@@ -6,8 +6,13 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import unicodedata
 import pandas as pd
-from streamlit_javascript import st_javascript
 import html
+
+# Try to import streamlit_javascript (optional dependency)
+try:
+    from streamlit_javascript import st_javascript
+except ImportError:
+    st_javascript = None  # Will use fallback method
 
 # ========================
 # 📂 Feedback Configuration
@@ -68,10 +73,10 @@ with st.container():
     with col1:
         # Single-click capsule radio for Light / Dark
         try:
-            theme_choice = st.radio('', options=['Light', 'Dark'], index=(1 if st.session_state.dark_mode else 0), key='theme_radio', horizontal=True)
+            theme_choice = st.radio('Theme Selection', options=['Light', 'Dark'], index=(1 if st.session_state.dark_mode else 0), key='theme_radio', horizontal=True, label_visibility="collapsed")
         except TypeError:
-            # older Streamlit versions may not support horizontal=True
-            theme_choice = st.radio('', options=['Light', 'Dark'], index=(1 if st.session_state.dark_mode else 0), key='theme_radio')
+            # older Streamlit versions may not support horizontal=True or label_visibility
+            theme_choice = st.radio('Theme Selection', options=['Light', 'Dark'], index=(1 if st.session_state.dark_mode else 0), key='theme_radio', label_visibility="collapsed")
 
         st.session_state.dark_mode = (theme_choice == 'Dark')
 
@@ -1307,14 +1312,17 @@ st.markdown(("""
 # ========================
 # Try to use streamlit_javascript if available; otherwise fall back to a tiny component
 try:
-    toggle_signal = st_javascript("""
-        let toggled = window.sessionStorage.getItem('adminPanelToggled');
-        if (toggled === 'true') {
-            return 'show';
-        } else {
-            return 'hide';
-        }
-    """)
+    if st_javascript is not None:
+        toggle_signal = st_javascript("""
+            let toggled = window.sessionStorage.getItem('adminPanelToggled');
+            if (toggled === 'true') {
+                return 'show';
+            } else {
+                return 'hide';
+            }
+        """)
+    else:
+        raise ImportError("st_javascript not available")
 except Exception:
     # Fallback: use st.components.v1 to run a small JS snippet that returns the value
     import streamlit.components.v1 as components
