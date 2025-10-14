@@ -1,5 +1,3 @@
-
-        
 import streamlit as st
 import requests, json, os, re, time
 import random
@@ -22,11 +20,16 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.csv")
 
-# Initialize feedback file if not present
-if not os.path.exists(FEEDBACK_FILE):
-    # ADDED 'ProblemStatement' COLUMN
-    df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
-    df.to_csv(FEEDBACK_FILE, index=False)
+# Initialize feedback file if not present (with proper error handling for cloud hosting)
+try:
+    if not os.path.exists(FEEDBACK_FILE):
+        # ADDED 'ProblemStatement' COLUMN
+        df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
+        df.to_csv(FEEDBACK_FILE, index=False)
+except (PermissionError, OSError) as e:
+    # On Streamlit Cloud, filesystem is read-only, so we'll use session state instead
+    if 'feedback_data' not in st.session_state:
+        st.session_state.feedback_data = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
 
 # Safe rerun helper: some Streamlit versions remove experimental_rerun
 def safe_rerun():
@@ -1847,7 +1850,7 @@ def reset_app_state():
     st.success("✅ Application reset successfully! You can start a new analysis.")
 
 def submit_feedback(feedback_type, name="", email="", off_definitions="", additional_feedback="", suggestions=""):
-    """Submit feedback to CSV file"""
+    """Submit feedback to CSV file or session state (cloud-compatible)"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Get context data
@@ -1861,6 +1864,7 @@ def submit_feedback(feedback_type, name="", email="", off_definitions="", additi
     ]], columns=["Timestamp", "Name", "Email", "Feedback", "FeedbackType", "OffDefinitions", "Suggestions", "Account", "Industry", "ProblemStatement"])
     
     try:
+        # Try file-based storage first (local development)
         if os.path.exists(FEEDBACK_FILE):
             existing = pd.read_csv(FEEDBACK_FILE)
             
@@ -1876,7 +1880,15 @@ def submit_feedback(feedback_type, name="", email="", off_definitions="", additi
         else:
             updated = new_entry
         
-        updated.to_csv(FEEDBACK_FILE, index=False)
+        try:
+            updated.to_csv(FEEDBACK_FILE, index=False)
+        except (PermissionError, OSError):
+            # Fallback to session state on Streamlit Cloud (read-only filesystem)
+            if 'feedback_data' not in st.session_state:
+                st.session_state.feedback_data = pd.DataFrame(columns=new_entry.columns)
+            st.session_state.feedback_data = pd.concat([st.session_state.feedback_data, new_entry], ignore_index=True)
+            st.info("📝 Feedback saved to session (cloud mode)")
+        
         st.session_state.feedback_submitted = True
         return True
     except Exception as e:
@@ -2147,25 +2159,17 @@ if not st.session_state.get('admin_view_selected', False) or st.session_state.ge
             components.html(scroll_script, height=0)
         except Exception:
             pass
+        
         vocab_text = st.session_state.outputs.get("vocabulary", "")
         
         # ✅ Step 1: Get the pre-formatted HTML from your function
-        try:
-            formatted_vocab = format_vocabulary_with_bold(vocab_text)
-            
-            # ✅ Step 2: Clean HTML entities (important!)
-            formatted_vocab = html.unescape(formatted_vocab)
-            formatted_vocab = formatted_vocab.replace("<", "&lt;").replace(">", "&gt;") # Re-escape HTML tags
-        except Exception as e:
-            # If any error occurs in formatting, use plain text
-            st.warning(f"Vocabulary formatting issue, displaying as plain text.")
-            formatted_vocab = vocab_text
+        formatted_vocab = format_vocabulary_with_bold(vocab_text)
 
-        # ✅ Step 3: Dynamically get account & industry for substitutions
+        # ✅ Step 2: Dynamically get account & industry for substitutions
         account_name = st.session_state.get("analysis_account", "").strip()
         industry_name = st.session_state.get("analysis_industry", "").strip()
 
-        # ✅ Step 4: Replace generic mentions in the ALREADY FORMATTED HTML
+        # ✅ Step 3: Replace generic mentions in the ALREADY FORMATTED HTML
         if account_name:
             # Use a more careful replacement that preserves HTML tags
             formatted_vocab = re.sub(
@@ -2182,13 +2186,13 @@ if not st.session_state.get('admin_view_selected', False) or st.session_state.ge
                 flags=re.IGNORECASE
             )
 
-        # ✅ Step 5: Fallback display names for header
+        # ✅ Step 4: Fallback display names for header
         display_account = account_name if account_name else "the company"
         display_industry = industry_name if industry_name else "the industry"
 
         # ---- Section Title & Subheading ----
         st.markdown(f"""
-            <div class="section-title-box" style="text-align:center; margin-top:0.5rem !important;">
+            <div class="section-title-box" style="margin-bottom: 1rem; text-align:center;">
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <h3 style="
                         margin-bottom:8px;
@@ -2200,25 +2204,25 @@ if not st.session_state.get('admin_view_selected', False) or st.session_state.ge
                         Vocabulary
                     </h3>
                     <p style="
-                        font-size:0.95rem;  
-                        color:white;  
+                        font-size:0.95rem; 
+                        color:white; 
                         margin:0;
                         line-height:1.5;
                         text-align:center;
                         max-width: 800px;
                     ">
-                        Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from  
-                        the <em>company</em> <strong>{display_account}</strong> and  
-                        the <em>industry</em> <strong>{display_industry}</strong> based on the  
+                        Please note that it is an <strong>AI-generated Vocabulary</strong>, derived from 
+                        the <em>company</em> <strong>{display_account}</strong> and 
+                        the <em>industry</em> <strong>{display_industry}</strong> based on the 
                         <em>problem statement</em> you shared.<br>
-                        In case you find something off, there's a provision to share feedback at the bottom  
+                        In case you find something off, there's a provision to share feedback at the bottom 
                         we encourage you to use it.
                     </p>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-        # ✅ Step 6: DIRECTLY render the formatted HTML (no extra wrapping)
+        # ✅ Step 5: DIRECTLY render the formatted HTML (no extra wrapping)
         st.markdown(formatted_vocab, unsafe_allow_html=True)
 
         # ========================
@@ -2539,15 +2543,25 @@ if st.session_state.get('current_page', '') == 'admin':
         # Admin download options - Full width for feedback report only
         st.markdown("**📋 Feedback Report**")
         
+        # Try to load from file first, fallback to session state (for cloud hosting)
+        df = None
         if os.path.exists(FEEDBACK_FILE):
             try:
                 # Read the file with the expected schema, allowing missing columns to be inferred
                 df = pd.read_csv(FEEDBACK_FILE) 
             except Exception as e:
-                st.error(f"Error reading feedback file: {e}")
+                st.warning(f"Could not read feedback file: {e}")
+                df = None
+        
+        # Fallback to session state if file not available (Streamlit Cloud)
+        if df is None or df.empty:
+            if 'feedback_data' in st.session_state and not st.session_state.feedback_data.empty:
+                df = st.session_state.feedback_data.copy()
+                st.info("📊 Showing feedback from current session (cloud mode)")
+            else:
                 df = None
 
-            if df is not None and not df.empty:
+        if df is not None and not df.empty:
                 # Add filter dropdown
                 filter_option = st.selectbox(
                     "Filter by feedback type:",
@@ -2586,10 +2600,8 @@ if st.session_state.get('current_page', '') == 'admin':
                     "text/csv",
                     use_container_width=True
                 )
-            else:
-                st.info("No feedback data available (file is empty or unreadable).")
         else:
-            st.info("Feedback file not found. No feedback has been submitted yet.")
+            st.info("No feedback data available yet. Submit feedback from the main page to see it here.")
 
     elif password and password != "":
         st.session_state.admin_authenticated = False
